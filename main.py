@@ -6,7 +6,7 @@ from pathlib import Path
 import telebot
 from dotenv import load_dotenv
 
-from keyboards import main_menu
+from keyboards import main_menu, already_stored
 
 ORDERS_FILE = Path('orders.json')
 VOLUME_MAP = {'1': 'мало', '2': 'средне', '3': 'много'}
@@ -76,7 +76,7 @@ def main() -> None:
             reply_markup=main_menu(),
         )
 
-    @bot.message_handler(func=lambda m: m.text == 'Оформить вывоз')
+    @bot.message_handler(func=lambda m: m.text == 'Хочу хранить вещи')
     def pickup_start(message):
         sessions[message.from_user.id] = {'state': 'WAIT_ADDRESS', 'data': {}}
         bot.send_message(
@@ -85,7 +85,50 @@ def main() -> None:
             reply_markup=main_menu(),
         )
 
-    @bot.message_handler(func=lambda m: m.text in {'Уже храню вещи', 'Мои заказы', 'Уже храню вещи', 'Хочу хранить вещи'})
+    @bot.message_handler(func=lambda m: m.text == 'Мои заказы')
+    def look_orders(message):
+        user_id = message.from_user.id
+        orders = read_orders()
+        user_orders = []
+        for order in orders:
+            if order['user_id'] == user_id:
+                user_orders.append(order)
+
+        if not user_orders:
+            bot.send_message(
+                message.chat.id,
+                'На данный момент у Вас нет заказов.',
+                reply_markup=main_menu(),
+            )
+        else:
+            bot.send_message(
+                message.chat.id,
+                'Ваши заказы: \n\n',
+                reply_markup=already_stored(),
+            )
+            for order in user_orders:
+                text = (
+                    f'Номер заказа: {order['id']}\n'
+                    f'Создан: {order['created_at']}\n'
+                    f'Склад: -\n'
+                    f'Адрес доставки: {order['address']}\n'
+                    f'Объем вещей: {order['volume']}'
+                )
+                bot.send_message(
+                    message.chat.id,
+                    text,
+                    reply_markup=already_stored(),
+                )
+
+    in_development = [
+        'Правила хранения',
+        'Уже храню вещи',
+        "Забрать частично вещи",
+        "Забрать полностью вещи",
+        "Положить обратно в арендованную ячейку",
+    ]
+
+    @bot.message_handler(func=lambda m: m.text in in_development)
     def menu_placeholders(message):
         bot.send_message(
             message.chat.id,
