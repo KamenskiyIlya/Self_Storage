@@ -11,3 +11,8 @@ def already_stored():
     keyboard.add(KeyboardButton("Забрать частично вещи"), KeyboardButton("Забрать полностью вещи"))
     keyboard.add(KeyboardButton("Положить обратно в арендованную ячейку"))
     return keyboard
+
+def delivery_decision():
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+    keyboard.add(KeyboardButton("Заберу сам"), KeyboardButton("Нужна доставка"))
+    return keyboard
