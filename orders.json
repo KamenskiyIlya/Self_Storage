@@ -62,6 +62,7 @@
   ],
   "rental_agreements": [
     {
+	  "rent_id": 1,
       "user_telegram_id": 1001,
       "cell_number": "M-101",
       "start_date": "2026-02-01",
@@ -72,6 +73,7 @@
       "created_at": "2026-02-01T10:00:00Z"
     },
     {
+	  "rent_id": 1,
       "user_telegram_id": 1002,
       "cell_number": "L-205",
       "start_date": "2026-02-15",
@@ -119,6 +121,7 @@
   ],
   "delivery_requests": [
     {
+	  "order_id": 1,
       "user_telegram_id": 1001,
       "item_rental_agreement_qr_code": "QR-IVAN-M101-2026",
       "request_type": "pickup",
@@ -127,6 +130,7 @@
       "status": "in_transit"
     },
     {
+	  "order_id": 2,
       "user_telegram_id": 1002,
       "item_rental_agreement_qr_code": "QR-MARIA-L205-2026",
       "request_type": "delivery",
