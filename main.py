@@ -7,7 +7,7 @@ import telebot
 from dotenv import load_dotenv
 from telebot.types import InputFile
 
-from keyboards import main_menu, already_stored, delivery_decision, pickup_decision, approval_processing_data
+from keyboards import main_menu, already_stored, delivery_decision, pickup_decision, approval_processing_data, return_main_menu
 
 DATABASE_FILE = Path('database.json')
 VOLUME_MAP = {'1': 'мало', '2': 'средне', '3': 'много'}
@@ -27,13 +27,13 @@ def db_reader():
 
 
 def append_order(order) :
-    orders = read_orders()
-    order_id = len(orders) + 1
-    order['id'] = order_id
-    orders.append(order)
+    database = db_reader()
+    order_id = len(database['delivery_requests']) + 1
+    order['order_id'] = order_id
+    updated_orders = database['delivery_requests'].append(order)
 
     with DATABASE_FILE.open('w', encoding='utf-8') as file:
-        json.dump(orders, file, ensure_ascii=False, indent=2)
+        json.dump(updated_orders, file, ensure_ascii=False, indent=2)
 
     return order_id
         
@@ -55,7 +55,7 @@ def main() -> None:
     def get_session(user_id: int):
         return sessions.get(user_id)
 
-    @bot.message_handler(commands=['start'])
+    @bot.message_handler(commands=['start'], func=lambda m: m.text == "Вернуться в главное меню")
     def start(message):
         text = (
             'Привет! Я помощник компании Self Storage, которая занимается хранением вещей. 📦🚲📚👕\n'
@@ -77,14 +77,20 @@ def main() -> None:
             reply_markup=main_menu(),
         )
 
-    # @bot.message_handler(func=lambda m: m.text == 'Хочу хранить вещи')
-    # def pickup_start(message):
-    #     sessions[message.from_user.id] = {'state': 'WAIT_ADDRESS', 'data': {}}
-    #     bot.send_message(
-    #         message.chat.id,
-    #         'Введите адрес, откуда забрать вещи (город, улица, дом):',
-    #         reply_markup=main_menu(),
-    #     )
+
+    @bot.message_handler(func=lambda m: m.text == "Вернуться в главное меню")
+    def return_main_menu(message):
+        start(message)
+
+
+    @bot.message_handler(func=lambda m: m.text == 'Согласен ✅')
+    def pickup_start(message):
+        sessions[message.from_user.id] = {'state': 'WAIT_ADDRESS', 'data': {}}
+        bot.send_message(
+            message.chat.id,
+            'Введите адрес, откуда забрать вещи (город, улица, дом):',
+            reply_markup=return_main_menu()
+        )
 
 
     @bot.message_handler(func=lambda m: m.text == 'Хочу хранить вещи')
@@ -132,7 +138,7 @@ def main() -> None:
     @bot.message_handler(func=lambda m: m.text == 'Мои заказы')
     def look_orders(message):
         user_id = message.from_user.id
-        orders = read_orders()
+        orders = db_reader()
         user_orders = []
         for order in orders:
             if order['user_id'] == user_id:
