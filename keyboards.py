@@ -26,3 +26,8 @@ def approval_processing_data():
     keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
     keyboard.add(KeyboardButton("Согласен ✅"), KeyboardButton("Не согласен ❌"))
     return keyboard
+
+def return_main_menu():
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+    keyboard.add(KeyboardButton("Вернуться в главное меню"))
+    return keyboard
