@@ -13,17 +13,17 @@ DATABASE_FILE = Path('database.json')
 VOLUME_MAP = {'1': 'мало', '2': 'средне', '3': 'много'}
 
 
-def read_orders():
+def db_reader():
     if not DATABASE_FILE.exists():
         return []
 
     try:
         with DATABASE_FILE.open('r', encoding='utf-8') as file:
-            data = json.load(file)
+            database = json.load(file)
     except json.JSONDecodeError:
         return []
 
-    return data if isinstance(data, list) else []
+    return database if isinstance(database, dict) else []
 
 
 def append_order(order) :
@@ -36,11 +36,6 @@ def append_order(order) :
         json.dump(orders, file, ensure_ascii=False, indent=2)
 
     return order_id
-
-def db_reader():
-    with DATABASE_FILE.open('r', encoding='utf-8') as file:
-        data = json.load(file)
-        return data
         
 
 def main() -> None:
