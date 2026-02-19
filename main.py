@@ -8,16 +8,16 @@ from dotenv import load_dotenv
 
 from keyboards import main_menu, already_stored, delivery_decision
 
-ORDERS_FILE = Path('orders.json')
+DATABASE_FILE = Path('database.json')
 VOLUME_MAP = {'1': 'мало', '2': 'средне', '3': 'много'}
 
 
 def read_orders():
-    if not ORDERS_FILE.exists():
+    if not DATABASE_FILE.exists():
         return []
 
     try:
-        with ORDERS_FILE.open('r', encoding='utf-8') as file:
+        with DATABASE_FILE.open('r', encoding='utf-8') as file:
             data = json.load(file)
     except json.JSONDecodeError:
         return []
@@ -31,11 +31,16 @@ def append_order(order) :
     order['id'] = order_id
     orders.append(order)
 
-    with ORDERS_FILE.open('w', encoding='utf-8') as file:
+    with DATABASE_FILE.open('w', encoding='utf-8') as file:
         json.dump(orders, file, ensure_ascii=False, indent=2)
 
     return order_id
 
+def db_reader():
+    with DATABASE_FILE.open('r', encoding='utf-8') as file:
+        data = json.load(file)
+        return data
+        
 
 def main() -> None:
     load_dotenv()
@@ -76,13 +81,21 @@ def main() -> None:
             reply_markup=main_menu(),
         )
 
+    # @bot.message_handler(func=lambda m: m.text == 'Хочу хранить вещи')
+    # def pickup_start(message):
+    #     sessions[message.from_user.id] = {'state': 'WAIT_ADDRESS', 'data': {}}
+    #     bot.send_message(
+    #         message.chat.id,
+    #         'Введите адрес, откуда забрать вещи (город, улица, дом):',
+    #         reply_markup=main_menu(),
+    #     )
+
+
     @bot.message_handler(func=lambda m: m.text == 'Хочу хранить вещи')
-    def pickup_start(message):
-        sessions[message.from_user.id] = {'state': 'WAIT_ADDRESS', 'data': {}}
-        bot.send_message(
-            message.chat.id,
-            'Введите адрес, откуда забрать вещи (город, улица, дом):',
-            reply_markup=main_menu(),
+    def want_storage(message):
+        text = (
+            'У нас на данный момент есть 2 основных склада в МСК и СПБ:'
+            f''
         )
 
 
