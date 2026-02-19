@@ -1,0 +1,166 @@
+{
+  "users": [
+    {
+      "telegram_id": 1001,
+      "full_name": "Иван Петров",
+      "phone": "+7 900 111-22-33",
+      "address": "г. Москва, ул. Тверская, д. 15, кв. 7"
+    },
+    {
+      "telegram_id": 1002,
+      "full_name": "Мария Сидорова",
+      "phone": "+7 901 222-33-44",
+      "address": "г. Санкт-Петербург, Невский пр., д. 50, кв. 12"
+    }
+  ],
+  "cell_sizes": [
+    {
+      "code": "s",
+      "volume_m3": 1.0,
+      "monthly_price": 900.00
+    },
+    {
+      "code": "m",
+      "volume_m3": 2.0,
+      "monthly_price": 1500.00
+    },
+    {
+      "code": "l",
+      "volume_m3": 4.0,
+      "monthly_price": 2500.00
+    }
+  ],
+  "warehouses": [
+    {
+      "name": "Центральный склад (Москва)",
+      "address": "г. Москва, Складская ул., д. 1"
+    },
+    {
+      "name": "Северный склад (СПб)",
+      "address": "г. Санкт-Петербург, Индустриальная ул., д. 10"
+    }
+  ],
+  "cells": [
+    {
+      "cell_size_code": "m",
+      "warehouse_name": "Центральный склад (Москва)",
+      "number": "M-101",
+      "is_occupied": true
+    },
+    {
+      "cell_size_code": "l",
+      "warehouse_name": "Северный склад (СПб)",
+      "number": "L-205",
+      "is_occupied": true
+    },
+    {
+      "cell_size_code": "s",
+      "warehouse_name": "Центральный склад (Москва)",
+      "number": "S-005",
+      "is_occupied": false
+    }
+  ],
+  "rental_agreements": [
+    {
+      "user_telegram_id": 1001,
+      "cell_number": "M-101",
+      "start_date": "2026-02-01",
+      "end_date": "2026-04-30",
+      "total_price": 3000.00,
+      "status": "active",
+      "qr_code": "QR-IVAN-M101-2026",
+      "created_at": "2026-02-01T10:00:00Z"
+    },
+    {
+      "user_telegram_id": 1002,
+      "cell_number": "L-205",
+      "start_date": "2026-02-15",
+      "end_date": "2026-05-15",
+      "total_price": 7500.00,
+      "status": "active",
+      "qr_code": "QR-MARIA-L205-2026",
+      "created_at": "2026-02-15T11:30:00Z"
+    }
+  ],
+  "items": [
+    {
+      "rental_agreement_qr_code": "QR-IVAN-M101-2026",
+      "total_volume_m3": 1.7,
+      "has_seasonal_items": true,
+      "added_at": "2026-02-02T09:15:00Z",
+      "updated_at": "2026-02-10T14:30:00Z",
+      "removed_at": null
+    },
+    {
+      "rental_agreement_qr_code": "QR-MARIA-L205-2026",
+      "total_volume_m3": 3.2,
+      "has_seasonal_items": false,
+      "added_at": "2026-02-16T13:45:00Z",
+      "updated_at": "2026-02-18T16:20:00Z",
+      "removed_at": null
+    }
+  ],
+  "reminders": [
+    {
+      "rental_agreement_qr_code": "QR-IVAN-M101-2026",
+      "sent_at": "2026-04-01T10:00:00Z",
+      "reminder_type": "1m"
+    },
+    {
+      "rental_agreement_qr_code": "QR-IVAN-M101-2026",
+      "sent_at": "2026-04-20T10:00:00Z",
+      "reminder_type": "1w"
+    },
+    {
+      "rental_agreement_qr_code": "QR-MARIA-L205-2026",
+      "sent_at": "2026-05-01T11:00:00Z",
+      "reminder_type": "2w"
+    }
+  ],
+  "delivery_requests": [
+    {
+      "user_telegram_id": 1001,
+      "item_rental_agreement_qr_code": "QR-IVAN-M101-2026",
+      "request_type": "pickup",
+      "address": "г. Москва, ул. Тверская, д. 15, кв. 7",
+      "requested_at": "2026-02-20T15:30:00Z",
+      "status": "in_transit"
+    },
+    {
+      "user_telegram_id": 1002,
+      "item_rental_agreement_qr_code": "QR-MARIA-L205-2026",
+      "request_type": "delivery",
+      "address": "г. Санкт-Петербург, Лиговский пр., д. 60, кв. 5",
+      "requested_at": "2026-03-01T09:45:00Z",
+      "status": "pending"
+    }
+  ],
+  "payments": [
+    {
+      "rental_agreement_qr_code": "QR-IVAN-M101-2026",
+      "amount": 3000.00,
+      "paid_at": "2026-02-01T10:15:00Z",
+      "is_successful": true
+    },
+    {
+      "rental_agreement_qr_code": "QR-MARIA-L205-2026",
+      "amount": 7500.00,
+      "paid_at": "2026-02-15T12:00:00Z",
+      "is_successful": true
+    }
+  ],
+  "overdue_tariffs": [
+    {
+      "cell_size_code": "m",
+      "daily_rate": 50.00,
+      "valid_from": "2026-01-01",
+      "valid_until": "2027-01-01"
+    },
+    {
+      "cell_size_code": "l",
+      "daily_rate": 80.00,
+      "valid_from": "2026-01-01",
+      "valid_until": "2027-01-01"
+    }
+  ]
+}
