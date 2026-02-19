@@ -5,8 +5,9 @@ from pathlib import Path
 
 import telebot
 from dotenv import load_dotenv
+from telebot.types import InputFile
 
-from keyboards import main_menu, already_stored, delivery_decision
+from keyboards import main_menu, already_stored, delivery_decision, pickup_decision, approval_processing_data
 
 DATABASE_FILE = Path('database.json')
 VOLUME_MAP = {'1': 'мало', '2': 'средне', '3': 'много'}
@@ -93,10 +94,44 @@ def main() -> None:
 
     @bot.message_handler(func=lambda m: m.text == 'Хочу хранить вещи')
     def want_storage(message):
+        database = db_reader()
+        warehouses = database['warehouses']
         text = (
-            'У нас на данный момент есть 2 основных склада в МСК и СПБ:'
-            f''
+            'У нас на данный момент есть 2 основных склада в МСК и СПБ:\n\n'
+            f'{warehouses[0]['name']}\n'
+            f'{warehouses[0]['address']}\n\n'
+            f'{warehouses[1]['name']}\n'
+            f'{warehouses[1]['address']}\n\n'
+
+            'Также у нас есть услуга бесплатной доставки Ваших вещей на склад. '
+            'Интересует ли Вас данная услуга?'
         )
+        bot.send_message(
+            message.chat.id,
+            text,
+            reply_markup=pickup_decision(),
+        )
+
+    want_storage_message = ['Необходимо забрать', 'Отвезу сам']
+    @bot.message_handler(func=lambda m: m.text in want_storage_message)
+    def action_with_stored(message):
+        text = (
+            'Для дальнейшего взаимодействия, просьба ознакомиться с правилами обработки '
+            'персональных данных и дать свое согласие на их обработку.\n\n'
+            'Если согласны, тогда нажмите кнопку "согласен". В ином случае '
+            'мы не сможем оформить для Вас доставку и хранение вещей.'
+        )
+        bot.send_message(
+            message.chat.id,
+            text,
+            reply_markup=approval_processing_data(),
+        )
+        bot.send_document(
+            message.chat.id,
+            InputFile('Soglasie.pdf'),
+            reply_markup=approval_processing_data(),
+        )
+        
 
 
     @bot.message_handler(func=lambda m: m.text == 'Мои заказы')

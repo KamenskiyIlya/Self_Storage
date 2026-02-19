@@ -16,3 +16,13 @@ def delivery_decision():
     keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
     keyboard.add(KeyboardButton("Заберу сам"), KeyboardButton("Нужна доставка"))
     return keyboard
+
+def pickup_decision():
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+    keyboard.add(KeyboardButton("Отвезу сам"), KeyboardButton("Необходимо забрать"))
+    return keyboard
+
+def approval_processing_data():
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+    keyboard.add(KeyboardButton("Согласен ✅"), KeyboardButton("Не согласен ❌"))
+    return keyboard
