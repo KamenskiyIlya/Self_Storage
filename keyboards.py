@@ -34,3 +34,14 @@ def return_main_menu():
     keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
     keyboard.add(KeyboardButton("Вернуться в главное меню"))
     return keyboard
+
+def choose_volume():
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+    keyboard.add(KeyboardButton("s"), KeyboardButton("m"), KeyboardButton("l"))
+    keyboard.add(KeyboardButton("Вернуться в главное меню"))
+    return keyboard
+
+def confirm_request():
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+    keyboard.add(KeyboardButton("Да ✅"), KeyboardButton("Нет ❌"))
+    return keyboard

@@ -7,7 +7,8 @@ import telebot
 from dotenv import load_dotenv
 from telebot.types import InputFile
 
-from keyboards import main_menu, already_stored, delivery_decision, pickup_decision, approval_processing_data, return_main_menu
+from keyboards import main_menu, already_stored, delivery_decision, pickup_decision
+from keyboards import approval_processing_data, return_main_menu, choose_volume, confirm_request
 
 DATABASE_FILE = Path('database.json')
 VOLUME_MAP = {'1': 'мало', '2': 'средне', '3': 'много'}
@@ -242,10 +243,11 @@ def main() -> None:
 
     @bot.message_handler(func=lambda m: True)
     def pickup_flow(message):
-        text = (message.text or '').strip()
+        database = db_reader()
+        user_text = (message.text or '').strip()
         user_id = message.from_user.id
 
-        if text.lower() in {'/cancel', 'отмена'}:
+        if user_text.lower() in {'/cancel', 'отмена'}:
             reset_session(user_id)
             bot.send_message(
                 message.chat.id,
@@ -270,27 +272,27 @@ def main() -> None:
                 bot.send_message(message.chat.id, 'Адрес слишком короткий. Введите подробнее:')
                 return
 
-            session['data']['address'] = text
+            session['data']['address'] = user_text
             session['state'] = 'WAIT_PHONE'
             bot.send_message(message.chat.id, 'Введите телефон в формате +79991234567:')
             return
 
         if state == 'WAIT_PHONE':
-            if not text.startswith('+') or len(text) < 8:
+            if not user_text.startswith('+') or len(user_text) < 8:
                 bot.send_message(message.chat.id, 'Неверный формат. Пример: +79991234567')
                 return
 
-            session['data']['phone'] = text
+            session['data']['phone'] = user_text
             session['state'] = 'WAIT_VOLUME'
-            bot.send_message(message.chat.id, 'Оцените объём: 1) мало 2) средне 3) много (введите 1/2/3):')
+            text = 'Уточните, пожалуйста, какой примерный объем вещей Вы хотите хранить у нас?\n\n'
+            for size in database["cell_sizes"]:
+                text = text + f'{size["code"]} - {size["description"]}\n'
+            text = text + '\n Нажмите на кнопку с подходящим объемом.'
+
+            bot.send_message(message.chat.id, text, reply_markup=choose_volume())
             return
 
-        if state == 'WAIT_VOLUME':
-            if text not in VOLUME_MAP:
-                bot.send_message(message.chat.id, 'Введите 1, 2 или 3.')
-                return
-
-            session['data']['volume'] = VOLUME_MAP[text]
+            session['data']['volume'] = user_text
             session['state'] = 'CONFIRM'
             bot.send_message(
                 message.chat.id,
@@ -298,10 +300,12 @@ def main() -> None:
                 f"Адрес: {session['data']['address']}\n"
                 f"Телефон: {session['data']['phone']}\n"
                 f"Объём: {session['data']['volume']}\n\n"
-                'Ответьте: ДА - подтвердить, НЕТ - отменить.',
+                'Нажмите ДА для подтверждения или НЕТ для отмены',
+                reply_markup=confirm_request()
             )
             return
 
+        # Тут вместо кода снизу нужно прописать отдельный блок, если пользователь нажмет кнопку "ДА"
         if state == 'CONFIRM':
             answer = text.lower()
             if answer in {'да', 'yes', 'y'}:
