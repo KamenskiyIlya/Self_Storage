@@ -14,6 +14,7 @@ VOLUME_MAP = {'1': 'мало', '2': 'средне', '3': 'много'}
 
 
 def db_reader():
+    '''Достает информацию из БД'''
     if not DATABASE_FILE.exists():
         return []
 
@@ -96,17 +97,20 @@ def main() -> None:
     @bot.message_handler(func=lambda m: m.text == 'Хочу хранить вещи')
     def want_storage(message):
         database = db_reader()
-        warehouses = database['warehouses']
-        text = (
-            'У нас на данный момент есть 2 основных склада в МСК и СПБ:\n\n'
-            f'{warehouses[0]['name']}\n'
-            f'{warehouses[0]['address']}\n\n'
-            f'{warehouses[1]['name']}\n'
-            f'{warehouses[1]['address']}\n\n'
+        warehouses = database["warehouses"]
+        available_warehouses = []
 
-            'Также у нас есть услуга бесплатной доставки Ваших вещей на склад. '
-            'Интересует ли Вас данная услуга?'
-        )
+        for warehouse in warehouses:
+            for cell in database["cells"]:
+                if warehouse['name'] == cell["warehouse_name"] and cell["is_occupied"] is False:
+                    available_warehouses.append(warehouse)
+
+        text = 'На данный момент свободные ячейки есть на следующих складах:\n\n'
+        for warehouse in available_warehouses:
+            text = text + f'{warehouse["name"]}\n{warehouse["address"]}\n\n'
+
+        text = text + 'Также у нас есть услуга бесплатной доставки Ваших вещей на склад. Интересует ли Вас данная услуга?'
+
         bot.send_message(
             message.chat.id,
             text,
