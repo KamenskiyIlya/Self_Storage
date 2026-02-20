@@ -137,14 +137,15 @@ def main() -> None:
 
     @bot.message_handler(func=lambda m: m.text == 'Мои заказы')
     def look_orders(message):
+        '''Бот выводит все аренды клиента'''
         user_id = message.from_user.id
-        orders = db_reader()
-        user_orders = []
-        for order in orders:
-            if order['user_id'] == user_id:
-                user_orders.append(order)
+        database = db_reader()
+        user_rent = []
+        for rent in database["rental_agreements"]:
+            if rent["user_telegram_id"] == user_id:
+                user_rent.append(rent)
 
-        if not user_orders:
+        if not user_rent:
             bot.send_message(
                 message.chat.id,
                 'На данный момент у Вас нет заказов.',
@@ -153,16 +154,27 @@ def main() -> None:
         else:
             bot.send_message(
                 message.chat.id,
-                'Ваши заказы: \n\n',
+                'Ваши арендованные ячейки: \n\n',
                 reply_markup=already_stored(),
             )
-            for order in user_orders:
+            for rent in user_rent:
+                for cell in database['cells']:
+                    if cell["number"] == rent["cell_number"]:
+                        warehouse = cell["warehouse_name"]
+                        cell_size_code = cell["cell_size_code"]
+
+                for cell in database["cell_sizes"]:
+                    if cell["code"] == cell_size_code:
+                        cell_description = cell["description"]
+
                 text = (
-                    f'Номер заказа: {order['id']}\n'
-                    f'Создан: {order['created_at']}\n'
-                    f'Склад: -\n'
-                    f'Адрес доставки: {order['address']}\n'
-                    f'Объем вещей: {order['volume']}'
+                    f'Склад: {warehouse}\n'
+                    f'Номер ячейки: {rent["cell_number"]}\n'
+                    f'Размер ячейки: {cell_size_code} - {cell_description}\n'
+                    f'Начало аренды: {rent["start_date"]}\n'
+                    f'Конец аренды: {rent["end_date"]}\n'
+                    f'Общая цена: {rent["total_price"]}\n'
+                    f'Статус аренды: {rent["status"]}'
                 )
                 bot.send_message(
                     message.chat.id,
