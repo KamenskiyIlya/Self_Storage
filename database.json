@@ -16,18 +16,18 @@
   "cell_sizes": [
     {
       "code": "s",
-      "volume_m3": 1.0,
-      "monthly_price": 900.00
+      "description": "Вещей на несколько коробок",
+      "monthly_price": 1000.00
     },
     {
       "code": "m",
-      "volume_m3": 2.0,
-      "monthly_price": 1500.00
+      "description": "Вещей примерно шкаф или кладовка",
+      "monthly_price": 2000.00
     },
     {
       "code": "l",
-      "volume_m3": 4.0,
-      "monthly_price": 2500.00
+      "description": "Вещей примерно с комнату",
+      "monthly_price": 4000.00
     }
   ],
   "warehouses": [
