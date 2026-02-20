@@ -10,7 +10,6 @@ def already_stored():
     keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
     keyboard.add(KeyboardButton("Забрать частично вещи"), KeyboardButton("Забрать полностью вещи"))
     keyboard.add(KeyboardButton("Положить обратно в арендованную ячейку"), KeyboardButton("Вернуться в главное меню"))
-    keyboard.add(KeyboardButton("Вернуться в главное меню"))
     return keyboard
 
 def delivery_decision():

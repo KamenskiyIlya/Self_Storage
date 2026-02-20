@@ -160,7 +160,6 @@ def main() -> None:
             bot.send_message(
                 message.chat.id,
                 'Ваши арендованные ячейки: \n\n',
-                reply_markup=already_stored(),
             )
             for rent in user_rent:
                 for cell in database['cells']:
@@ -181,12 +180,18 @@ def main() -> None:
                     f'Общая цена: {rent["total_price"]}\n'
                     f'Статус аренды: {rent["status"]}'
                 )
-                bot.send_message(
-                    message.chat.id,
-                    text,
-                    reply_markup=already_stored(),
-                )
-
+                if any(rent["status"] == "Активна" for rent in user_rent):
+                    bot.send_message(
+                        message.chat.id,
+                        text,
+                        reply_markup=already_stored(),
+                    )
+                elif all(rent["status"] == "Закончена" for rent in user_rent):
+                    bot.send_message(
+                        message.chat.id,
+                        text,
+                        reply_markup=main_menu(),
+                    )
 
     @bot.message_handler(func=lambda m: m.text == "Уже храню вещи")
     def action_with_stored(message):
