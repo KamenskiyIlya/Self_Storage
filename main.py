@@ -18,6 +18,7 @@ def main() -> None:
     load_dotenv()
     token = os.getenv('TG_TOKEN')
     chat_id = os.getenv('TG_CHAT_ID')
+    admin_id = os.getenv('ADMIN_TG_ID')
 
     if not token:
         raise RuntimeError('TG_TOKEN не задан в переменных окружения')
@@ -439,6 +440,23 @@ def main() -> None:
             message.chat.id,
             f"Готово.\nTelegram: {result['sent']}\nEmail: {result['email_sent']}\nОшибки: {result['errors']}"
         )
+
+
+    @bot.message_handler(commands=['orders'])
+    def orders_count(message):
+        if str(message.from_user.id) != str(admin_id):
+            bot.send_message(message.chat.id, 'Команда доступна только оператору.')
+            return
+        else:
+            database = db_reader()
+            rent_orders = database["rental_agreements"]
+            orders_count = len(rent_orders)
+            bot.send_message(
+                message.chat.id,
+                f'Количество заказов на аренду на данный момент: {orders_count}',
+                reply_markup=main_menu()
+                )
+
 
     @bot.message_handler(func=lambda m: True)
     def pickup_flow(message):
