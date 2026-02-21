@@ -133,6 +133,14 @@
       "address": "г. Санкт-Петербург, Лиговский пр., д. 60, кв. 5",
       "requested_at": "2026-03-01T09:45:00Z",
       "status": "pending"
+    },
+    {
+      "user_telegram_id": 559985587,
+      "item_rental_agreement_qr_code": null,
+      "request_type": "pickup",
+      "address": "Москва, красная площадь",
+      "requested_at": "2026-02-21T11:26:21Z",
+      "status": "pending"
     }
   ],
   "payments": [

@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from telebot.types import InputFile
 
 from keyboards import main_menu, already_stored, delivery_decision, pickup_decision
-from keyboards import approval_processing_data, return_main_menu, choose_volume, confirm_request
+from keyboards import approval_processing_data, return_main_menu as return_main_menu_keyboard, choose_volume, confirm_request
 
 DATABASE_FILE = Path('database.json')
 VOLUME_MAP = {'1': 'мало', '2': 'средне', '3': 'много'}
@@ -30,12 +30,15 @@ def db_reader():
 
 def append_order(order) :
     database = db_reader()
-    order_id = len(database['delivery_requests']) + 1
-    order['order_id'] = order_id
-    updated_orders = database['delivery_requests'].append(order)
+    if not isinstance(database, dict):
+        database = {}
+
+    delivery_requests = database.setdefault('delivery_requests', [])
+    order_id = len(delivery_requests) + 1
+    delivery_requests.append(order)
 
     with DATABASE_FILE.open('w', encoding='utf-8') as file:
-        json.dump(updated_orders, file, ensure_ascii=False, indent=2)
+        json.dump(database, file, ensure_ascii=False, indent=2)
 
     return order_id
         
@@ -57,7 +60,7 @@ def main() -> None:
     def get_session(user_id: int):
         return sessions.get(user_id)
 
-    @bot.message_handler(commands=['start'], func=lambda m: m.text == "Вернуться в главное меню")
+    @bot.message_handler(commands=['start'])
     def start(message):
         text = (
             'Привет! Я помощник компании Self Storage, которая занимается хранением вещей. 📦🚲📚👕\n'
@@ -81,7 +84,7 @@ def main() -> None:
 
 
     @bot.message_handler(func=lambda m: m.text == "Вернуться в главное меню")
-    def return_main_menu(message):
+    def handle_return_main_menu(message):
         start(message)
 
 
@@ -91,7 +94,16 @@ def main() -> None:
         bot.send_message(
             message.chat.id,
             'Введите адрес, откуда забрать вещи (город, улица, дом):',
-            reply_markup=return_main_menu()
+            reply_markup=return_main_menu_keyboard()
+        )
+
+    @bot.message_handler(func=lambda m: m.text == 'Не согласен ❌')
+    def decline_personal_data_processing(message):
+        reset_session(message.from_user.id)
+        bot.send_message(
+            message.chat.id,
+            'Без согласия на обработку персональных данных оформить заявку нельзя. Возвращаю в главное меню.',
+            reply_markup=main_menu(),
         )
 
 
@@ -273,7 +285,7 @@ def main() -> None:
         state = session['state']
 
         if state == 'WAIT_ADDRESS':
-            if len(text) < 8:
+            if len(user_text) < 8:
                 bot.send_message(message.chat.id, 'Адрес слишком короткий. Введите подробнее:')
                 return
 
@@ -297,6 +309,12 @@ def main() -> None:
             bot.send_message(message.chat.id, text, reply_markup=choose_volume())
             return
 
+        if state == 'WAIT_VOLUME':
+            available_sizes = {size['code'] for size in database.get('cell_sizes', [])}
+            if user_text not in available_sizes:
+                bot.send_message(message.chat.id, 'Выберите объём кнопкой: s, m или l.')
+                return
+
             session['data']['volume'] = user_text
             session['state'] = 'CONFIRM'
             bot.send_message(
@@ -310,19 +328,16 @@ def main() -> None:
             )
             return
 
-        # Тут вместо кода снизу нужно прописать отдельный блок, если пользователь нажмет кнопку "ДА"
         if state == 'CONFIRM':
-            answer = text.lower()
-            if answer in {'да', 'yes', 'y'}:
+            answer = user_text.lower()
+            if answer.startswith('да') or answer in {'yes', 'y'}:
                 order = {
-                    'created_at': datetime.now().isoformat(timespec='seconds'),
-                    'user_id': user_id,
-                    'username': message.from_user.username,
-                    'full_name': f"{message.from_user.first_name or ''} {message.from_user.last_name or ''}".strip(),
+                    'user_telegram_id': user_id,
+                    'item_rental_agreement_qr_code': None,
+                    'request_type': 'pickup',
                     'address': session['data']['address'],
-                    'phone': session['data']['phone'],
-                    'volume': session['data']['volume'],
-                    'status': 'new',
+                    'requested_at': f"{datetime.utcnow().isoformat(timespec='seconds')}Z",
+                    'status': 'pending',
                 }
                 order_id = append_order(order)
                 reset_session(user_id)
@@ -338,15 +353,15 @@ def main() -> None:
                         chat_id,
                         'Новая заявка на вывоз:\n'
                         f'№{order_id}\n'
-                        f"Клиент: {order['full_name'] or 'Без имени'}\n"
-                        f"@{order['username'] or 'без username'}\n"
-                        f"Телефон: {order['phone']}\n"
-                        f"Адрес: {order['address']}\n"
-                        f"Объём: {order['volume']}",
+                        f"Клиент: {(message.from_user.first_name or '')} {(message.from_user.last_name or '')}\n"
+                        f"@{message.from_user.username or 'без username'}\n"
+                        f"Телефон: {session['data']['phone']}\n"
+                        f"Адрес: {session['data']['address']}\n"
+                        f"Объём: {session['data']['volume']}",
                     )
                 return
 
-            if answer in {'нет', 'no', 'n'}:
+            if answer.startswith('нет') or answer in {'no', 'n'}:
                 reset_session(user_id)
                 bot.send_message(message.chat.id, 'Ок, заявка отменена.', reply_markup=main_menu())
                 return
