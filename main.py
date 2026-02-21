@@ -391,12 +391,17 @@ def main() -> None:
             return
 
         if state == 'WAIT_VOLUME':
-            available_sizes = {size['code'] for size in database.get('cell_sizes', [])}
-            if user_text not in available_sizes:
+            selected_size = next(
+                (size for size in database.get('cell_sizes', []) if size['code'] == user_text),
+                None
+            )
+            if selected_size is None:
                 bot.send_message(message.chat.id, 'Выберите объём кнопкой: s, m или l.')
                 return
 
             session['data']['volume'] = user_text
+            session['data']['volume_description'] = selected_size['description']
+            session['data']['expected_monthly_price'] = selected_size['monthly_price']
             session['state'] = 'CONFIRM'
             measure_text = (
                 'Курьер замерит габариты на месте.'
@@ -414,7 +419,8 @@ def main() -> None:
                 f'{route_text}'
                 f"Адрес: {session['data']['address']}\n"
                 f"Телефон: {session['data']['phone']}\n"
-                f"Объём: {session['data']['volume']}\n\n"
+                f"Объём: {session['data']['volume']} - {session['data']['volume_description']}\n"
+                f"Ожидаемая стоимость: {session['data']['expected_monthly_price']} руб./мес.\n\n"
                 f'{measure_text}\n\n'
                 'Нажмите ДА для подтверждения или НЕТ для отмены',
                 reply_markup=confirm_request()
@@ -450,7 +456,8 @@ def main() -> None:
                         f"@{message.from_user.username or 'без username'}\n"
                         f"Телефон: {session['data']['phone']}\n"
                         f"Адрес: {session['data']['address']}\n"
-                        f"Объём: {session['data']['volume']}",
+                        f"Объём: {session['data']['volume']} - {session['data']['volume_description']}\n"
+                        f"Ожидаемая стоимость: {session['data']['expected_monthly_price']} руб./мес.",
                     )
                 return
 

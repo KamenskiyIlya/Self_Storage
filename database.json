@@ -141,6 +141,14 @@
       "address": "Москва, красная площадь",
       "requested_at": "2026-02-21T11:26:21Z",
       "status": "pending"
+    },
+    {
+      "user_telegram_id": 559985587,
+      "item_rental_agreement_qr_code": null,
+      "request_type": "self_dropoff",
+      "address": "г. Москва, Складская ул., д. 1",
+      "requested_at": "2026-02-21T11:43:46Z",
+      "status": "pending"
     }
   ],
   "payments": [
