@@ -5,7 +5,7 @@ from pathlib import Path
 
 import telebot
 from dotenv import load_dotenv
-from telebot.types import InputFile
+from telebot.types import InputFile, ReplyKeyboardMarkup, KeyboardButton
 
 from keyboards import main_menu, already_stored, delivery_decision, pickup_decision
 from keyboards import approval_processing_data, return_main_menu as return_main_menu_keyboard, choose_volume, confirm_request
@@ -41,7 +41,15 @@ def append_order(order) :
         json.dump(database, file, ensure_ascii=False, indent=2)
 
     return order_id
-        
+
+
+def warehouse_keyboard(warehouses):
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+    for warehouse in warehouses:
+        keyboard.add(KeyboardButton(warehouse['name']))
+    keyboard.add(KeyboardButton("Вернуться в главное меню"))
+    return keyboard
+
 
 def main() -> None:
     load_dotenv()
@@ -90,11 +98,31 @@ def main() -> None:
 
     @bot.message_handler(func=lambda m: m.text == 'Согласен ✅')
     def pickup_start(message):
-        sessions[message.from_user.id] = {'state': 'WAIT_ADDRESS', 'data': {}}
+        session = get_session(message.from_user.id)
+        if not session or session.get('state') != 'WAIT_CONSENT':
+            bot.send_message(
+                message.chat.id,
+                'Сначала выберите тип оформления в меню "Хочу хранить вещи".',
+                reply_markup=main_menu(),
+            )
+            return
+
+        request_type = session['data'].get('request_type')
+        if request_type == 'pickup':
+            session['state'] = 'WAIT_ADDRESS'
+            bot.send_message(
+                message.chat.id,
+                'Введите адрес, откуда забрать вещи (город, улица, дом):',
+                reply_markup=return_main_menu_keyboard()
+            )
+            return
+
+        session['state'] = 'WAIT_WAREHOUSE'
+        warehouses = session['data'].get('available_warehouses', [])
         bot.send_message(
             message.chat.id,
-            'Введите адрес, откуда забрать вещи (город, улица, дом):',
-            reply_markup=return_main_menu_keyboard()
+            'Выберите склад, куда планируете привезти вещи самостоятельно:',
+            reply_markup=warehouse_keyboard(warehouses),
         )
 
     @bot.message_handler(func=lambda m: m.text == 'Не согласен ❌')
@@ -133,6 +161,25 @@ def main() -> None:
     want_storage_message = ['Необходимо забрать', 'Отвезу сам']
     @bot.message_handler(func=lambda m: m.text in want_storage_message)
     def action_with_stored(message):
+        database = db_reader()
+        available_warehouses = []
+        for warehouse in database.get("warehouses", []):
+            has_free_cells = any(
+                warehouse['name'] == cell["warehouse_name"] and cell["is_occupied"] is False
+                for cell in database.get("cells", [])
+            )
+            if has_free_cells:
+                available_warehouses.append(warehouse)
+
+        request_type = 'pickup' if message.text == 'Необходимо забрать' else 'self_dropoff'
+        sessions[message.from_user.id] = {
+            'state': 'WAIT_CONSENT',
+            'data': {
+                'request_type': request_type,
+                'available_warehouses': available_warehouses,
+            }
+        }
+
         text = (
             'Для дальнейшего взаимодействия, просьба ознакомиться с правилами обработки '
             'персональных данных и дать свое согласие на их обработку.\n\n'
@@ -243,7 +290,6 @@ def main() -> None:
 
 
     in_development = [
-        'Правила хранения',
         "Забрать частично вещи",
         "Забрать полностью вещи",
         "Положить обратно в арендованную ячейку",
@@ -313,6 +359,22 @@ def main() -> None:
             bot.send_message(message.chat.id, 'Введите телефон в формате +79991234567:')
             return
 
+        if state == 'WAIT_WAREHOUSE':
+            warehouse_names = {w['name'] for w in session['data'].get('available_warehouses', [])}
+            if user_text not in warehouse_names:
+                bot.send_message(message.chat.id, 'Выберите склад кнопкой из списка.')
+                return
+
+            selected_warehouse = next(
+                (w for w in session['data']['available_warehouses'] if w['name'] == user_text),
+                None
+            )
+            session['data']['warehouse_name'] = selected_warehouse['name']
+            session['data']['address'] = selected_warehouse['address']
+            session['state'] = 'WAIT_PHONE'
+            bot.send_message(message.chat.id, 'Введите телефон в формате +79991234567:')
+            return
+
         if state == 'WAIT_PHONE':
             if not user_text.startswith('+') or len(user_text) < 8:
                 bot.send_message(message.chat.id, 'Неверный формат. Пример: +79991234567')
@@ -322,8 +384,8 @@ def main() -> None:
             session['state'] = 'WAIT_VOLUME'
             text = 'Уточните, пожалуйста, какой примерный объем вещей Вы хотите хранить у нас?\n\n'
             for size in database["cell_sizes"]:
-                text = text + f'{size["code"]} - {size["description"]}\n'
-            text = text + '\n Нажмите на кнопку с подходящим объемом.'
+                text = text + f'{size["code"]} - {size["description"]} ({size["monthly_price"]} руб./мес.)\n'
+            text = text + '\nНажмите на кнопку с подходящим объемом.'
 
             bot.send_message(message.chat.id, text, reply_markup=choose_volume())
             return
@@ -336,12 +398,24 @@ def main() -> None:
 
             session['data']['volume'] = user_text
             session['state'] = 'CONFIRM'
+            measure_text = (
+                'Курьер замерит габариты на месте.'
+                if session['data'].get('request_type') == 'pickup'
+                else 'Точный объём замерим при приёме вещей на складе.'
+            )
+            route_text = (
+                f"Склад: {session['data']['warehouse_name']}\n"
+                if session['data'].get('request_type') == 'self_dropoff'
+                else ''
+            )
             bot.send_message(
                 message.chat.id,
                 'Проверьте заявку:\n'
+                f'{route_text}'
                 f"Адрес: {session['data']['address']}\n"
                 f"Телефон: {session['data']['phone']}\n"
                 f"Объём: {session['data']['volume']}\n\n"
+                f'{measure_text}\n\n'
                 'Нажмите ДА для подтверждения или НЕТ для отмены',
                 reply_markup=confirm_request()
             )
@@ -353,7 +427,7 @@ def main() -> None:
                 order = {
                     'user_telegram_id': user_id,
                     'item_rental_agreement_qr_code': None,
-                    'request_type': 'pickup',
+                    'request_type': session['data'].get('request_type', 'pickup'),
                     'address': session['data']['address'],
                     'requested_at': f"{datetime.utcnow().isoformat(timespec='seconds')}Z",
                     'status': 'pending',
