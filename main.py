@@ -341,7 +341,7 @@ def main() -> None:
         bot.send_message(
             message.chat.id,
             f'Введите адрес для услуги доставки ({action_title}):',
-            reply_markup=options_keyboard(["Отмена"], include_main_menu=True),
+            reply_markup=options_keyboard(["Отмена"], include_main_menu=False),
         )
 
     @bot.message_handler(func=lambda m: m.text == "Заберу сам")
