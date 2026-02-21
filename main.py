@@ -9,9 +9,9 @@ from telebot.types import InputFile
 
 from keyboards import main_menu, already_stored, delivery_decision, pickup_decision
 from keyboards import approval_processing_data, return_main_menu as return_main_menu_keyboard, choose_volume, confirm_request
-from db_utils import db_reader, append_order
+from db_utils import db_reader, append_order, get_cell_by_number
 from reminders import process_rent_reminders
-from ui_helpers import warehouse_keyboard
+from ui_helpers import warehouse_keyboard, options_keyboard
 
 
 def main() -> None:
@@ -26,6 +26,20 @@ def main() -> None:
     sessions: dict[int, dict] = {}
     reminder_lock = threading.Lock()
     last_reminder_date = {"value": None}
+    existing_actions = {
+        "Забрать частично вещи": {
+            "code": "partial_takeout",
+            "title": "Частичный забор вещей",
+        },
+        "Забрать полностью вещи": {
+            "code": "full_takeout",
+            "title": "Полный забор вещей",
+        },
+        "Положить обратно в арендованную ячейку": {
+            "code": "return_to_cell",
+            "title": "Возврат вещей в ячейку",
+        },
+    }
 
     def reset_session(user_id: int):
         sessions.pop(user_id, None)
@@ -142,7 +156,7 @@ def main() -> None:
 
     want_storage_message = ['Необходимо забрать', 'Отвезу сам']
     @bot.message_handler(func=lambda m: m.text in want_storage_message)
-    def action_with_stored(message):
+    def already_stored_menu(message):
         database = db_reader()
         available_warehouses = []
         for warehouse in database.get("warehouses", []):
@@ -258,26 +272,135 @@ def main() -> None:
     ]
     @bot.message_handler(func=lambda m: m.text in already_stored_message)
     def delivery_offer(message):
-        text = (
-            'У нас есть услуга доставки. Не теряйте время на лишние хлопоты, лучше потратьте его на себя. '
-            'За Вас все сделает наш курьер, от Вас нужно будет только указать информацию о вещах и адрес. '
-            'Также Вы можете заняться перевозкой вещей самостоятельно\n\n'
-            'Как Вам было бы удобней?'
-        )
+        database = db_reader()
+        user_id = message.from_user.id
+        selected_action = existing_actions[message.text]
+        active_rents = [
+            rent for rent in database.get("rental_agreements", [])
+            if rent.get("user_telegram_id") == user_id and rent.get("status") == "Активна"
+        ]
+
+        if not active_rents:
+            bot.send_message(
+                message.chat.id,
+                'У вас нет активных аренд для этого действия.',
+                reply_markup=main_menu(),
+            )
+            return
+
+        if len(active_rents) == 1:
+            sessions[user_id] = {
+                "state": "WAIT_EXISTING_DELIVERY_DECISION",
+                "data": {
+                    "existing_action": selected_action,
+                    "selected_rent": active_rents[0],
+                }
+            }
+            selected_cell = active_rents[0].get("cell_number")
+            text = (
+                f"{selected_action['title']}\n"
+                f"Ячейка: {selected_cell}\n\n"
+                'У нас есть услуга доставки. За Вас все сделает курьер, от Вас нужен адрес и телефон. '
+                'Также Вы можете выполнить действие самостоятельно.\n\n'
+                'Как Вам удобнее?'
+            )
+            bot.send_message(
+                message.chat.id,
+                text,
+                reply_markup=delivery_decision(),
+            )
+            return
+
+        rent_map = {rent["cell_number"]: rent for rent in active_rents}
+        sessions[user_id] = {
+            "state": "WAIT_EXISTING_RENT_SELECT",
+            "data": {
+                "existing_action": selected_action,
+                "rent_map": rent_map,
+            }
+        }
         bot.send_message(
             message.chat.id,
-            text,
-            reply_markup=delivery_decision(),
+            'Выберите номер ячейки, по которой хотите оформить действие:',
+            reply_markup=options_keyboard(list(rent_map.keys())),
         )
 
+    @bot.message_handler(func=lambda m: m.text == "Нужна доставка")
+    def existing_need_delivery(message):
+        session = get_session(message.from_user.id)
+        if not session or session.get("state") != "WAIT_EXISTING_DELIVERY_DECISION":
+            bot.send_message(
+                message.chat.id,
+                'Этот сценарий пока доступен только из раздела "Уже храню вещи".',
+                reply_markup=main_menu(),
+            )
+            return
 
-    in_development = [
-        "Забрать частично вещи",
-        "Забрать полностью вещи",
-        "Положить обратно в арендованную ячейку",
-        "Нужна доставка",
-        "Заберу сам",
-    ]
+        action_title = session["data"]["existing_action"]["title"].lower()
+        session["state"] = "WAIT_EXISTING_ADDRESS"
+        bot.send_message(
+            message.chat.id,
+            f'Введите адрес для услуги доставки ({action_title}):',
+            reply_markup=options_keyboard(["Отмена"], include_main_menu=True),
+        )
+
+    @bot.message_handler(func=lambda m: m.text == "Заберу сам")
+    def existing_self_service(message):
+        session = get_session(message.from_user.id)
+        if not session or session.get("state") != "WAIT_EXISTING_DELIVERY_DECISION":
+            bot.send_message(
+                message.chat.id,
+                'Этот сценарий пока доступен только из раздела "Уже храню вещи".',
+                reply_markup=main_menu(),
+            )
+            return
+
+        selected_rent = session["data"]["selected_rent"]
+        action = session["data"]["existing_action"]
+        database = db_reader()
+        cell = get_cell_by_number(database, selected_rent.get("cell_number"))
+        warehouse_name = cell.get("warehouse_name") if cell else "Склад"
+        warehouse_address = "Адрес уточнит оператор"
+        for warehouse in database.get("warehouses", []):
+            if warehouse.get("name") == warehouse_name:
+                warehouse_address = warehouse.get("address")
+                break
+
+        order = {
+            "user_telegram_id": message.from_user.id,
+            "item_rental_agreement_qr_code": selected_rent.get("qr_code"),
+            "request_type": f"{action['code']}_self",
+            "address": warehouse_address,
+            "requested_at": f"{datetime.utcnow().isoformat(timespec='seconds')}Z",
+            "status": "self_service",
+        }
+        order_id = append_order(order)
+        reset_session(message.from_user.id)
+
+        bot.send_message(
+            message.chat.id,
+            f"Заявка №{order_id} оформлена.\n"
+            f"{action['title']} самостоятельно.\n"
+            f"Склад: {warehouse_name}\n"
+            f"Адрес: {warehouse_address}",
+            reply_markup=main_menu(),
+        )
+
+        if chat_id:
+            bot.send_message(
+                chat_id,
+                f"Новая заявка (самостоятельно) №{order_id}\n"
+                f"Тип: {action['title']}\n"
+                f"Клиент: {(message.from_user.first_name or '')} {(message.from_user.last_name or '')}\n"
+                f"@{message.from_user.username or 'без username'}\n"
+                f"Договор: {selected_rent.get('qr_code')}\n"
+                f"Ячейка: {selected_rent.get('cell_number')}\n"
+                f"Склад: {warehouse_name}\n"
+                f"Адрес: {warehouse_address}",
+            )
+
+
+    in_development = []
 
     @bot.message_handler(func=lambda m: m.text == 'Правила хранения')
     def storage_rules(message):
@@ -351,6 +474,56 @@ def main() -> None:
             session['data']['address'] = user_text
             session['state'] = 'WAIT_PHONE'
             bot.send_message(message.chat.id, 'Введите телефон в формате +79991234567:')
+            return
+
+        if state == "WAIT_EXISTING_RENT_SELECT":
+            selected_rent = session["data"]["rent_map"].get(user_text)
+            if not selected_rent:
+                bot.send_message(message.chat.id, 'Выберите номер ячейки кнопкой.')
+                return
+
+            session["data"]["selected_rent"] = selected_rent
+            session["state"] = "WAIT_EXISTING_DELIVERY_DECISION"
+            action = session["data"]["existing_action"]
+            text = (
+                f"{action['title']}\n"
+                f"Ячейка: {selected_rent.get('cell_number')}\n\n"
+                'Можно оформить доставку (курьер) или выполнить действие самостоятельно.\n'
+                'Как Вам удобнее?'
+            )
+            bot.send_message(message.chat.id, text, reply_markup=delivery_decision())
+            return
+
+        if state == "WAIT_EXISTING_ADDRESS":
+            if len(user_text) < 8:
+                bot.send_message(message.chat.id, 'Адрес слишком короткий. Введите подробнее:')
+                return
+
+            session["data"]["address"] = user_text
+            session["state"] = "WAIT_EXISTING_PHONE"
+            bot.send_message(message.chat.id, 'Введите телефон в формате +79991234567:')
+            return
+
+        if state == "WAIT_EXISTING_PHONE":
+            if not user_text.startswith('+') or len(user_text) < 8:
+                bot.send_message(message.chat.id, 'Неверный формат. Пример: +79991234567')
+                return
+
+            session["data"]["phone"] = user_text
+            session["state"] = "CONFIRM_EXISTING"
+            action = session["data"]["existing_action"]
+            selected_rent = session["data"]["selected_rent"]
+            bot.send_message(
+                message.chat.id,
+                'Проверьте заявку:\n'
+                f"Тип: {action['title']}\n"
+                f"Договор: {selected_rent.get('qr_code')}\n"
+                f"Ячейка: {selected_rent.get('cell_number')}\n"
+                f"Адрес доставки: {session['data']['address']}\n"
+                f"Телефон: {session['data']['phone']}\n\n"
+                'Нажмите ДА для подтверждения или НЕТ для отмены',
+                reply_markup=confirm_request(),
+            )
             return
 
         if state == 'WAIT_WAREHOUSE':
@@ -452,6 +625,50 @@ def main() -> None:
                         f"Адрес: {session['data']['address']}\n"
                         f"Объём: {session['data']['volume']} - {session['data']['volume_description']}\n"
                         f"Ожидаемая стоимость: {session['data']['expected_monthly_price']} руб./мес.",
+                    )
+                return
+
+            if answer.startswith('нет') or answer in {'no', 'n'}:
+                reset_session(user_id)
+                bot.send_message(message.chat.id, 'Ок, заявка отменена.', reply_markup=main_menu())
+                return
+
+            bot.send_message(message.chat.id, 'Ответьте ДА или НЕТ.')
+            return
+
+        if state == "CONFIRM_EXISTING":
+            answer = user_text.lower()
+            if answer.startswith('да') or answer in {'yes', 'y'}:
+                action = session["data"]["existing_action"]
+                selected_rent = session["data"]["selected_rent"]
+                order = {
+                    "user_telegram_id": user_id,
+                    "item_rental_agreement_qr_code": selected_rent.get("qr_code"),
+                    "request_type": f"{action['code']}_delivery",
+                    "address": session["data"]["address"],
+                    "requested_at": f"{datetime.utcnow().isoformat(timespec='seconds')}Z",
+                    "status": "pending",
+                }
+                order_id = append_order(order)
+                reset_session(user_id)
+
+                bot.send_message(
+                    message.chat.id,
+                    f"Заявка №{order_id} создана ✅ Оператор свяжется с вами.",
+                    reply_markup=main_menu(),
+                )
+
+                if chat_id:
+                    bot.send_message(
+                        chat_id,
+                        f"Новая заявка на доставку №{order_id}\n"
+                        f"Тип: {action['title']}\n"
+                        f"Клиент: {(message.from_user.first_name or '')} {(message.from_user.last_name or '')}\n"
+                        f"@{message.from_user.username or 'без username'}\n"
+                        f"Телефон: {session['data']['phone']}\n"
+                        f"Адрес: {session['data']['address']}\n"
+                        f"Договор: {selected_rent.get('qr_code')}\n"
+                        f"Ячейка: {selected_rent.get('cell_number')}",
                     )
                 return
 
