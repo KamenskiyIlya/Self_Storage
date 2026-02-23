@@ -6,6 +6,14 @@ def main_menu():
     keyboard.add(KeyboardButton("Уже храню вещи"), KeyboardButton("Хочу хранить вещи"))
     return keyboard
 
+
+def admin_menu():
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+    keyboard.add(KeyboardButton("Правила хранения"), KeyboardButton("Мои заказы"))
+    keyboard.add(KeyboardButton("Уже храню вещи"), KeyboardButton("Хочу хранить вещи"))
+    keyboard.add(KeyboardButton("Просрочки (обзвон)"))
+    return keyboard
+
 def already_stored():
     keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
     keyboard.add(KeyboardButton("Забрать частично вещи"), KeyboardButton("Забрать полностью вещи"))

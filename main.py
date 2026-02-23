@@ -1,13 +1,15 @@
 import os
 import threading
 import time
+from io import BytesIO
 from datetime import datetime, date
 
 import telebot
+import qrcode
 from dotenv import load_dotenv
 from telebot.types import InputFile
 
-from keyboards import main_menu, already_stored, delivery_decision, pickup_decision
+from keyboards import main_menu, admin_menu, already_stored, delivery_decision, pickup_decision
 from keyboards import approval_processing_data, return_main_menu as return_main_menu_keyboard, choose_volume, confirm_request
 from db_utils import db_reader, append_order, get_cell_by_number
 from reminders import process_rent_reminders
@@ -48,6 +50,62 @@ def main() -> None:
     def get_session(user_id: int):
         return sessions.get(user_id)
 
+    def get_main_menu(user_id: int):
+        if str(user_id) == str(admin_id):
+            return admin_menu()
+        return main_menu()
+
+    def get_warehouse_address(database: dict, cell_number: str | None):
+        cell = get_cell_by_number(database, cell_number)
+        warehouse_name = cell.get("warehouse_name") if cell else "Склад"
+        warehouse_address = "Адрес уточнит оператор"
+        for warehouse in database.get("warehouses", []):
+            if warehouse.get("name") == warehouse_name:
+                warehouse_address = warehouse.get("address")
+                break
+        return warehouse_name, warehouse_address
+
+    def send_pickup_qr_to_user(chat_id_value: int, rent: dict, warehouse_name: str, warehouse_address: str, action_code: str):
+        qr_code_value = rent.get("qr_code")
+        if not qr_code_value:
+            bot.send_message(
+                chat_id_value,
+                "QR-код по договору не найден. Свяжитесь с оператором, пожалуйста.",
+                reply_markup=get_main_menu(chat_id_value),
+            )
+            return
+
+        expires_at = datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+        qr_payload = (
+            f"selfstorage:pickup\n"
+            f"agreement={qr_code_value}\n"
+            f"cell={rent.get('cell_number')}\n"
+            f"expires_at={expires_at}"
+        )
+        qr_image = qrcode.make(qr_payload)
+        qr_buffer = BytesIO()
+        qr_image.save(qr_buffer, format="PNG")
+        qr_buffer.seek(0)
+        qr_buffer.name = f"pickup_{qr_code_value}.png"
+
+        bot.send_photo(chat_id_value, qr_buffer)
+        lines = [
+            "Ваш QR-код для выдачи вещей готов.",
+            f"Договор: {qr_code_value}",
+            f"Ячейка: {rent.get('cell_number')}",
+            f"Склад: {warehouse_name}",
+            f"Адрес выдачи: {warehouse_address}",
+            "Если удобнее, можем привезти вещи на дом за доплату: выберите вариант с доставкой.",
+        ]
+        if action_code == "partial_takeout":
+            lines.append("После частичного забора вещи можно вернуть обратно до окончания текущей аренды.")
+
+        bot.send_message(
+            chat_id_value,
+            "\n".join(lines),
+            reply_markup=get_main_menu(chat_id_value),
+        )
+
     def run_daily_reminders():
         with reminder_lock:
             today_str = date.today().isoformat()
@@ -84,7 +142,7 @@ def main() -> None:
         bot.send_message(
             message.chat.id,
             text,
-            reply_markup=main_menu(),
+            reply_markup=get_main_menu(message.from_user.id),
         )
 
 
@@ -387,13 +445,7 @@ def main() -> None:
         selected_rent = session["data"]["selected_rent"]
         action = session["data"]["existing_action"]
         database = db_reader()
-        cell = get_cell_by_number(database, selected_rent.get("cell_number"))
-        warehouse_name = cell.get("warehouse_name") if cell else "Склад"
-        warehouse_address = "Адрес уточнит оператор"
-        for warehouse in database.get("warehouses", []):
-            if warehouse.get("name") == warehouse_name:
-                warehouse_address = warehouse.get("address")
-                break
+        warehouse_name, warehouse_address = get_warehouse_address(database, selected_rent.get("cell_number"))
 
         order = {
             "user_telegram_id": message.from_user.id,
@@ -412,8 +464,17 @@ def main() -> None:
             f"{action['title']} самостоятельно.\n"
             f"Склад: {warehouse_name}\n"
             f"Адрес: {warehouse_address}",
-            reply_markup=main_menu(),
+            reply_markup=get_main_menu(message.from_user.id),
         )
+
+        if action["code"] in {"partial_takeout", "full_takeout"}:
+            send_pickup_qr_to_user(
+                chat_id_value=message.chat.id,
+                rent=selected_rent,
+                warehouse_name=warehouse_name,
+                warehouse_address=warehouse_address,
+                action_code=action["code"],
+            )
 
         if chat_id:
             bot.send_message(
@@ -491,6 +552,17 @@ def main() -> None:
             bot.send_message(message.chat.id, 'Команда доступна только оператору.')
             return
 
+        send_overdue_contacts(message)
+
+    @bot.message_handler(func=lambda m: m.text == "Просрочки (обзвон)")
+    def overdue_contacts_button(message):
+        if str(message.from_user.id) != str(admin_id):
+            bot.send_message(message.chat.id, 'Раздел доступен только оператору.', reply_markup=main_menu())
+            return
+
+        send_overdue_contacts(message)
+
+    def send_overdue_contacts(message):
         database = db_reader()
         today = date.today()
         users_by_id = {
@@ -530,7 +602,7 @@ def main() -> None:
             bot.send_message(
                 message.chat.id,
                 "Сейчас нет просроченных активных аренд.",
-                reply_markup=main_menu(),
+                reply_markup=get_main_menu(message.from_user.id),
             )
             return
 
@@ -551,13 +623,13 @@ def main() -> None:
         text = "\n".join(lines).strip()
         max_chunk_len = 3500
         if len(text) <= max_chunk_len:
-            bot.send_message(message.chat.id, text, reply_markup=main_menu())
+            bot.send_message(message.chat.id, text, reply_markup=get_main_menu(message.from_user.id))
             return
 
         for start in range(0, len(text), max_chunk_len):
             chunk = text[start:start + max_chunk_len]
             bot.send_message(message.chat.id, chunk)
-        bot.send_message(message.chat.id, "Список отправлен.", reply_markup=main_menu())
+        bot.send_message(message.chat.id, "Список отправлен.", reply_markup=get_main_menu(message.from_user.id))
 
 
     @bot.message_handler(func=lambda m: True)
