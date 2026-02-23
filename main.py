@@ -557,7 +557,7 @@ def main() -> None:
 
     @bot.message_handler(commands=['run_reminders'])
     def run_reminders_command(message):
-        if chat_id and str(message.chat.id) != str(chat_id):
+        if str(message.from_user.id) != str(admin_id):
             bot.send_message(message.chat.id, 'Команда доступна только оператору.')
             return
 
