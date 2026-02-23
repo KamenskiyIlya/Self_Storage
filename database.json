@@ -4,13 +4,29 @@
       "telegram_id": 1001,
       "full_name": "Иван Петров",
       "phone": "+7 900 111-22-33",
-      "address": "г. Москва, ул. Тверская, д. 15, кв. 7"
+      "address": "г. Москва, ул. Тверская, д. 15, кв. 7",
+      "email": "ivan.petrov@example.com"
     },
     {
       "telegram_id": 1002,
       "full_name": "Мария Сидорова",
       "phone": "+7 901 222-33-44",
-      "address": "г. Санкт-Петербург, Невский пр., д. 50, кв. 12"
+      "address": "г. Санкт-Петербург, Невский пр., д. 50, кв. 12",
+      "email": "maria.sidorova@example.com"
+    },
+    {
+      "telegram_id": 441112407,
+      "full_name": "Александр Тестов",
+      "phone": "+7 903 333-44-55",
+      "address": "г. Москва, ул. Примерная, д. 1, кв. 10",
+      "email": "alex.testov@example.com"
+    },
+    {
+      "telegram_id": 559985587,
+      "full_name": "Илья Клиентов",
+      "phone": "+7 904 444-55-66",
+      "address": "г. Москва, ул. Клиентская, д. 22, кв. 4",
+      "email": "ilya.client@example.com"
     }
   ],
   "cell_sizes": [
