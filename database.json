@@ -24,10 +24,11 @@
     {
       "telegram_id": 559985587,
       "full_name": "Aleksandr",
-      "phone": "+7 904 444-55-66",
-      "address": "г. Москва, ул. Клиентская, д. 22, кв. 4",
-      "email": "ilya.client@example.com",
-      "username": "Groyne_Zi"
+      "phone": "+79991234567",
+      "address": "Красная площадь, 1",
+      "email": "babynin.home@gmail.com",
+      "username": "Groyne_Zi",
+      "acquisition_source": "в главное меню"
     },
     {
       "telegram_id": 1894262332,
@@ -77,13 +78,13 @@
       "cell_size_code": "l",
       "warehouse_name": "Северный склад (СПб)",
       "number": "L-205",
-      "is_occupied": true
+      "is_occupied": false
     },
     {
       "cell_size_code": "s",
       "warehouse_name": "Центральный склад (Москва)",
       "number": "S-005",
-      "is_occupied": true
+      "is_occupied": false
     }
   ],
   "rental_agreements": [
@@ -261,6 +262,47 @@
       "service_mode": "self_service",
       "order_id": 7,
       "approved_at": "2026-02-23T11:50:21Z"
+    },
+    {
+      "user_telegram_id": 559985587,
+      "item_rental_agreement_qr_code": null,
+      "request_type": "pickup",
+      "address": "Красная площадь",
+      "phone": "+79991234567",
+      "email": "babynin.home@gmail.com",
+      "volume_code": "m",
+      "has_seasonal_items": false,
+      "seasonal_item_list": [],
+      "rent_days": 30,
+      "promo_code": null,
+      "promo_discount_percent": 0,
+      "expected_monthly_price": 2000.0,
+      "expected_total_price": 2000.0,
+      "requested_at": "2026-02-23T12:27:04Z",
+      "status": "rejected",
+      "order_id": 8,
+      "rejected_at": "2026-02-23T12:29:33Z",
+      "rejected_by": 559985587,
+      "rejection_reason": "Нет свободных ячеек"
+    },
+    {
+      "user_telegram_id": 559985587,
+      "item_rental_agreement_qr_code": null,
+      "request_type": "pickup",
+      "address": "Красная площадь, 1",
+      "phone": "+79991234567",
+      "email": "babynin.home@gmail.com",
+      "volume_code": "l",
+      "has_seasonal_items": false,
+      "seasonal_item_list": [],
+      "rent_days": 90,
+      "promo_code": null,
+      "promo_discount_percent": 0,
+      "expected_monthly_price": 4000.0,
+      "expected_total_price": 12000.0,
+      "requested_at": "2026-02-23T12:30:31Z",
+      "status": "pending",
+      "order_id": 9
     }
   ],
   "payments": [

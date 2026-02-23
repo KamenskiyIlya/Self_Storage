@@ -9,7 +9,7 @@ from telebot.types import InputFile
 
 from utils.keyboards import main_menu, admin_menu, already_stored, delivery_decision, pickup_decision
 from utils.keyboards import approval_processing_data, return_main_menu as return_main_menu_keyboard, choose_volume, confirm_request, promo_decision
-from utils.db_utils import db_reader, append_order, get_cell_by_number, save_database, upsert_user_profile
+from utils.db_utils import db_reader, append_order, get_cell_by_number, save_database, sync_cells_occupancy, upsert_user_profile
 from utils.helpers import (
     build_storage_confirm_text,
     find_monthly_price,
@@ -74,6 +74,12 @@ def main() -> None:
 
     def get_session(user_id: int):
         return sessions.get(user_id)
+
+    def read_db_synced():
+        database = db_reader()
+        if sync_cells_occupancy(database):
+            save_database(database)
+        return database
 
     def send_storage_confirm(chat_id_value: int, session_data: dict):
         bot.send_message(
@@ -225,7 +231,7 @@ def main() -> None:
 
     @bot.message_handler(func=lambda m: m.text == 'Хочу хранить вещи')
     def want_storage(message):
-        database = db_reader()
+        database = read_db_synced()
         warehouses = database["warehouses"]
         available_warehouses = []
 
@@ -273,7 +279,7 @@ def main() -> None:
     want_storage_message = ['Необходимо забрать', 'Отвезу сам']
     @bot.message_handler(func=lambda m: m.text in want_storage_message)
     def already_stored_menu(message):
-        database = db_reader()
+        database = read_db_synced()
         available_warehouses = []
         for warehouse in database.get("warehouses", []):
             has_free_cells = any(
@@ -826,7 +832,7 @@ def main() -> None:
             return
 
         target_order_id = int(parts[1])
-        database = db_reader()
+        database = read_db_synced()
         delivery_requests = database.get("delivery_requests", [])
         order = None
         for idx, item in enumerate(delivery_requests, start=1):

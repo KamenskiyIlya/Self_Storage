@@ -24,6 +24,22 @@ def save_database(database):
         json.dump(database, file, ensure_ascii=False, indent=2)
 
 
+def sync_cells_occupancy(database):
+    cells = database.get("cells", [])
+    active_cell_numbers = {
+        rent.get("cell_number")
+        for rent in database.get("rental_agreements", [])
+        if rent.get("status") == "Активна"
+    }
+    changed = False
+    for cell in cells:
+        should_be_occupied = cell.get("number") in active_cell_numbers
+        if bool(cell.get("is_occupied")) != should_be_occupied:
+            cell["is_occupied"] = should_be_occupied
+            changed = True
+    return changed
+
+
 def append_order(order):
     database = db_reader()
     if not isinstance(database, dict):
