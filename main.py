@@ -1185,8 +1185,6 @@ def main() -> None:
         ]
         for source, count in sorted(source_stats.items(), key=lambda item: item[1], reverse=True):
             lines.append(f"- {source}: {count}")
-        lines.append("")
-        lines.append("Подсказка: передавайте рекламу как deep-link /start <source>, например /start vk_march.")
         bot.send_message(
             message.chat.id,
             "\n".join(lines),

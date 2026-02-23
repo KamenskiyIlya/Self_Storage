@@ -78,7 +78,7 @@
       "cell_size_code": "l",
       "warehouse_name": "Северный склад (СПб)",
       "number": "L-205",
-      "is_occupied": false
+      "is_occupied": true
     },
     {
       "cell_size_code": "s",
@@ -117,6 +117,16 @@
       "status": "Закончена",
       "qr_code": "QR-1894262332-S-005-20260223-6",
       "created_at": "2026-02-23T11:49:27Z"
+    },
+    {
+      "user_telegram_id": 559985587,
+      "cell_number": "L-205",
+      "start_date": "2026-02-23",
+      "end_date": "2026-05-24",
+      "total_price": 12000.0,
+      "status": "Активна",
+      "qr_code": "QR-559985587-L-205-20260223-9",
+      "created_at": "2026-02-23T12:35:20Z"
     }
   ],
   "items": [
@@ -146,6 +156,15 @@
       ],
       "added_at": "2026-02-23T11:49:27Z",
       "updated_at": "2026-02-23T11:49:27Z",
+      "removed_at": null
+    },
+    {
+      "rental_agreement_qr_code": "QR-559985587-L-205-20260223-9",
+      "total_volume_m3": null,
+      "has_seasonal_items": false,
+      "item_list": [],
+      "added_at": "2026-02-23T12:35:20Z",
+      "updated_at": "2026-02-23T12:35:20Z",
       "removed_at": null
     }
   ],
@@ -301,8 +320,11 @@
       "expected_monthly_price": 4000.0,
       "expected_total_price": 12000.0,
       "requested_at": "2026-02-23T12:30:31Z",
-      "status": "pending",
-      "order_id": 9
+      "status": "approved",
+      "order_id": 9,
+      "approved_at": "2026-02-23T12:35:20Z",
+      "approved_by": 559985587,
+      "rental_agreement_qr_code": "QR-559985587-L-205-20260223-9"
     }
   ],
   "payments": [
