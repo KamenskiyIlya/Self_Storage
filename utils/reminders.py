@@ -1,13 +1,13 @@
 from datetime import datetime, date, timezone
 
-from db_utils import (
+from .db_utils import (
     db_reader,
     save_database,
     find_user,
     get_cell_by_number,
     get_overdue_daily_rate,
 )
-from mailer import send_yandex_email
+from .mailer import send_yandex_email_detailed
 
 
 def process_rent_reminders(bot, admin_chat_id=None):
@@ -106,13 +106,17 @@ def process_rent_reminders(bot, admin_chat_id=None):
                     pass
 
         if user_email:
-            if send_yandex_email(user_email, email_subject, f"{full_name},\n\n{message}"):
+            email_ok, email_error = send_yandex_email_detailed(user_email, email_subject, f"{full_name},\n\n{message}")
+            if email_ok:
                 email_sent_count += 1
             else:
                 errors += 1
                 if admin_chat_id:
                     try:
-                        bot.send_message(admin_chat_id, f"Не удалось отправить email на {user_email} ({qr_code}).")
+                        bot.send_message(
+                            admin_chat_id,
+                            f"Не удалось отправить email на {user_email} ({qr_code}). Ошибка: {email_error}"
+                        )
                     except Exception:
                         pass
 

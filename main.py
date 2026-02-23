@@ -1,20 +1,31 @@
 import os
 import threading
 import time
-from io import BytesIO
-from datetime import datetime, date, timedelta, timezone
+from datetime import datetime, date, timedelta
 
 import telebot
-import qrcode
 from dotenv import load_dotenv
 from telebot.types import InputFile
 
-from keyboards import main_menu, admin_menu, already_stored, delivery_decision, pickup_decision
-from keyboards import approval_processing_data, return_main_menu as return_main_menu_keyboard, choose_volume, confirm_request, promo_decision
-from db_utils import db_reader, append_order, get_cell_by_number, save_database, upsert_user_profile
-from mailer import send_yandex_email
-from reminders import process_rent_reminders
-from ui_helpers import warehouse_keyboard, options_keyboard
+from utils.keyboards import main_menu, admin_menu, already_stored, delivery_decision, pickup_decision
+from utils.keyboards import approval_processing_data, return_main_menu as return_main_menu_keyboard, choose_volume, confirm_request, promo_decision
+from utils.db_utils import db_reader, append_order, get_cell_by_number, save_database, upsert_user_profile
+from utils.helpers import (
+    build_storage_confirm_text,
+    find_monthly_price,
+    get_warehouse_address,
+    is_valid_email,
+    normalize_full_name,
+    order_id_from_record,
+    parse_items_list,
+    parse_start_source,
+    promo_result,
+    utc_now_iso,
+)
+from utils.mailer import send_yandex_email_detailed
+from utils.reminders import process_rent_reminders
+from utils.ui_helpers import warehouse_keyboard, options_keyboard
+from utils.get_qr import build_pickup_qr_file
 
 
 def main() -> None:
@@ -64,108 +75,10 @@ def main() -> None:
     def get_session(user_id: int):
         return sessions.get(user_id)
 
-    def normalize_full_name(telegram_user):
-        full_name = f"{telegram_user.first_name or ''} {telegram_user.last_name or ''}".strip()
-        return full_name or "Клиент"
-
-    def parse_start_source(message_text: str):
-        parts = (message_text or "").split(maxsplit=1)
-        if len(parts) < 2:
-            return None
-        source = parts[1].strip().lower()
-        return source or None
-
-    def promo_result(raw_code: str | None):
-        if not raw_code:
-            return {"status": "none"}
-        code = raw_code.strip().lower()
-        if not code:
-            return {"status": "none"}
-        promo = promo_catalog.get(code)
-        if promo is None:
-            return {"status": "unknown", "code": code}
-        today = date.today()
-        if not (promo["valid_from"] <= today <= promo["valid_until"]):
-            return {
-                "status": "inactive",
-                "code": code,
-                "valid_from": promo["valid_from"].isoformat(),
-                "valid_until": promo["valid_until"].isoformat(),
-            }
-        return {
-            "status": "active",
-            "code": code,
-            "discount_percent": promo["discount_percent"],
-        }
-
-    def order_id_from_record(order: dict, fallback_index: int):
-        order_id = order.get("order_id")
-        if isinstance(order_id, int):
-            return order_id
-        return fallback_index
-
-    def find_monthly_price(database: dict, cell_size_code: str):
-        for size in database.get("cell_sizes", []):
-            if size.get("code") == cell_size_code:
-                try:
-                    return float(size.get("monthly_price"))
-                except (TypeError, ValueError):
-                    return None
-        return None
-
-    def is_valid_email(value: str):
-        email = (value or "").strip()
-        if "@" not in email or "." not in email:
-            return False
-        if email.startswith("@") or email.endswith("@"):
-            return False
-        return len(email) >= 6
-
-    def parse_items_list(raw_text: str):
-        prepared = (raw_text or "").replace(";", ",").replace("\n", ",")
-        items = [part.strip() for part in prepared.split(",")]
-        return [item for item in items if item]
-
     def send_storage_confirm(chat_id_value: int, session_data: dict):
-        measure_text = (
-            'Курьер замерит габариты на месте.'
-            if session_data.get('request_type') == 'pickup'
-            else 'Точный объём замерим при приёме вещей на складе.'
-        )
-        route_text = (
-            f"Склад: {session_data['warehouse_name']}\n"
-            if session_data.get('request_type') == 'self_dropoff'
-            else ''
-        )
-        discount_percent = session_data.get('promo_discount_percent', 0)
-        base_price = session_data.get('expected_monthly_price_base', session_data.get('expected_monthly_price', 0))
-        final_price = session_data.get('expected_monthly_price', 0)
-        promo_text = (
-            f"Промокод: {session_data.get('promo_code')} (-{discount_percent}%)\n"
-            f"Цена без скидки: {base_price} руб./мес.\n"
-            f"Цена со скидкой: {final_price} руб./мес.\n"
-            if session_data.get('promo_code')
-            else f"Промокод: не применён\nОжидаемая стоимость: {final_price} руб./мес.\n"
-        )
-        seasonal_text = "Сезонные вещи: нет"
-        if session_data.get('has_seasonal_items'):
-            item_list = session_data.get('seasonal_item_list', [])
-            seasonal_text = f"Сезонные вещи: {', '.join(item_list)}" if item_list else "Сезонные вещи: указаны"
-
         bot.send_message(
             chat_id_value,
-            'Проверьте заявку:\n'
-            f'{route_text}'
-            f"Адрес: {session_data['address']}\n"
-            f"Телефон: {session_data['phone']}\n"
-            f"Email: {session_data['email']}\n"
-            f"Объём: {session_data['volume']} - {session_data['volume_description']}\n"
-            f"Срок хранения: {session_data.get('rent_days', 30)} дн.\n"
-            f"{seasonal_text}\n"
-            f"{promo_text}\n"
-            f"Ожидаемая стоимость за весь срок: {session_data.get('expected_total_price')} руб.\n"
-            f'{measure_text}\n\n'
-            'Нажмите ДА для подтверждения или НЕТ для отмены',
+            build_storage_confirm_text(session_data),
             reply_markup=confirm_request()
         )
 
@@ -173,19 +86,6 @@ def main() -> None:
         if str(user_id) == str(admin_id):
             return admin_menu()
         return main_menu()
-
-    def utc_now_iso(timespec: str = "seconds"):
-        return datetime.now(timezone.utc).isoformat(timespec=timespec).replace("+00:00", "Z")
-
-    def get_warehouse_address(database: dict, cell_number: str | None):
-        cell = get_cell_by_number(database, cell_number)
-        warehouse_name = cell.get("warehouse_name") if cell else "Склад"
-        warehouse_address = "Адрес уточнит оператор"
-        for warehouse in database.get("warehouses", []):
-            if warehouse.get("name") == warehouse_name:
-                warehouse_address = warehouse.get("address")
-                break
-        return warehouse_name, warehouse_address
 
     def send_pickup_qr_to_user(chat_id_value: int, rent: dict, warehouse_name: str, warehouse_address: str, action_code: str):
         qr_code_value = rent.get("qr_code")
@@ -198,17 +98,11 @@ def main() -> None:
             return
 
         expires_at = utc_now_iso(timespec="seconds")
-        qr_payload = (
-            f"selfstorage:pickup\n"
-            f"agreement={qr_code_value}\n"
-            f"cell={rent.get('cell_number')}\n"
-            f"expires_at={expires_at}"
+        qr_buffer = build_pickup_qr_file(
+            qr_code_value=qr_code_value,
+            cell_number=rent.get("cell_number"),
+            expires_at=expires_at,
         )
-        qr_image = qrcode.make(qr_payload)
-        qr_buffer = BytesIO()
-        qr_image.save(qr_buffer, format="PNG")
-        qr_buffer.seek(0)
-        qr_buffer.name = f"pickup_{qr_code_value}.png"
 
         bot.send_photo(chat_id_value, qr_buffer)
         lines = [
@@ -590,7 +484,8 @@ def main() -> None:
         selected_rent = session["data"]["selected_rent"]
         action = session["data"]["existing_action"]
         database = db_reader()
-        warehouse_name, warehouse_address = get_warehouse_address(database, selected_rent.get("cell_number"))
+        selected_cell = get_cell_by_number(database, selected_rent.get("cell_number"))
+        warehouse_name, warehouse_address = get_warehouse_address(database, selected_cell)
 
         order = {
             "user_telegram_id": message.from_user.id,
@@ -774,6 +669,7 @@ def main() -> None:
 
         tg_ok = False
         email_ok = False
+        email_error = ""
         if user_id:
             try:
                 bot.send_message(user_id, reminder_text)
@@ -781,7 +677,7 @@ def main() -> None:
             except Exception:
                 tg_ok = False
         if user_email:
-            email_ok = send_yandex_email(
+            email_ok, email_error = send_yandex_email_detailed(
                 user_email,
                 f"SelfStorage: ручное напоминание по договору {agreement.get('qr_code')}",
                 reminder_text,
@@ -791,7 +687,7 @@ def main() -> None:
             message.chat.id,
             "Ручное напоминание выполнено.\n"
             f"Telegram клиенту: {'успешно' if tg_ok else 'ошибка'}\n"
-            f"Email клиенту: {'успешно' if email_ok else ('пропущен (email не указан)' if not user_email else 'ошибка')}",
+            f"Email клиенту: {'успешно' if email_ok else ('пропущен (email не указан)' if not user_email else f'ошибка ({email_error})')}",
             reply_markup=get_main_menu(message.from_user.id),
         )
 
@@ -1617,7 +1513,7 @@ def main() -> None:
 
         if state == 'WAIT_PROMO':
             promo_input = None if user_text == "Пропустить" else user_text
-            promo = promo_result(promo_input)
+            promo = promo_result(promo_input, promo_catalog)
             base_price = float(session['data'].get('expected_monthly_price_base', 0))
 
             if promo["status"] == "unknown":
