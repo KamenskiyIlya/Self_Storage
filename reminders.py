@@ -60,8 +60,16 @@ def process_rent_reminders(bot, admin_chat_id=None):
 
         if message is None:
             days_overdue = (today - end_date).days
-            overdue_points = {1, 30, 60, 90, 120, 150}
-            if days_overdue in overdue_points:
+            if days_overdue == 180:
+                reminder_type = "overdue_6m"
+                if not _reminder_sent_today(database, qr_code, reminder_type, today):
+                    message = (
+                        "Срок просроченного хранения достиг 6 месяцев.\n"
+                        f"Договор: {qr_code}\n"
+                        "Свяжитесь с нами срочно, чтобы согласовать дальнейшие действия."
+                    )
+                    email_subject = f"SelfStorage: 6 месяцев просрочки по договору {qr_code}"
+            elif days_overdue == 1 or (days_overdue > 1 and days_overdue % 30 == 0):
                 overdue_type = "overdue_start" if days_overdue == 1 else f"overdue_m{days_overdue // 30}"
                 if not _reminder_sent_today(database, qr_code, overdue_type, today):
                     cell = get_cell_by_number(database, rent.get("cell_number"))
@@ -82,16 +90,6 @@ def process_rent_reminders(bot, admin_chat_id=None):
                     )
                     reminder_type = overdue_type
                     email_subject = f"SelfStorage: просрочка по договору {qr_code}"
-
-            if message is None and days_overdue == 180:
-                reminder_type = "overdue_6m"
-                if not _reminder_sent_today(database, qr_code, reminder_type, today):
-                    message = (
-                        "Срок просроченного хранения достиг 6 месяцев.\n"
-                        f"Договор: {qr_code}\n"
-                        "Свяжитесь с нами срочно, чтобы согласовать дальнейшие действия."
-                    )
-                    email_subject = f"SelfStorage: 6 месяцев просрочки по договору {qr_code}"
 
         if message is None or reminder_type is None:
             continue

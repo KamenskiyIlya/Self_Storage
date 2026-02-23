@@ -218,14 +218,41 @@ def main() -> None:
                 'Ваши арендованные ячейки: \n\n',
             )
             for rent in user_rent:
-                for cell in database['cells']:
-                    if cell["number"] == rent["cell_number"]:
-                        warehouse = cell["warehouse_name"]
-                        cell_size_code = cell["cell_size_code"]
+                matched_cell = next(
+                    (cell for cell in database.get('cells', []) if cell.get("number") == rent.get("cell_number")),
+                    None
+                )
+                warehouse = matched_cell.get("warehouse_name") if matched_cell else "Неизвестный склад"
+                cell_size_code = matched_cell.get("cell_size_code") if matched_cell else "-"
 
-                for cell in database["cell_sizes"]:
-                    if cell["code"] == cell_size_code:
-                        cell_description = cell["description"]
+                matched_size = next(
+                    (size for size in database.get("cell_sizes", []) if size.get("code") == cell_size_code),
+                    None
+                )
+                cell_description = matched_size.get("description") if matched_size else "Описание недоступно"
+
+                item_record = next(
+                    (
+                        item for item in database.get("items", [])
+                        if item.get("rental_agreement_qr_code") == rent.get("qr_code")
+                        and item.get("removed_at") is None
+                    ),
+                    None
+                )
+                seasonal_block = ""
+                if item_record and item_record.get("has_seasonal_items"):
+                    raw_item_list = item_record.get("item_list")
+                    if isinstance(raw_item_list, list) and raw_item_list:
+                        item_list = ", ".join(str(item_name) for item_name in raw_item_list)
+                        seasonal_block = f"\nСписок сезонных вещей: {item_list}"
+                    else:
+                        seasonal_block = "\nСписок сезонных вещей: сезонные вещи (детализацию заполнит оператор)."
+
+                storage_details = (
+                    f"\nАрендуемый объём/площадь: {cell_size_code} - {cell_description}"
+                    f"\nПериод аренды: {rent.get('start_date')} — {rent.get('end_date')}"
+                    f"{seasonal_block}"
+                )
 
                 text = (
                     f'Склад: {warehouse}\n'
@@ -235,6 +262,7 @@ def main() -> None:
                     f'Конец аренды: {rent["end_date"]}\n'
                     f'Общая цена: {rent["total_price"]}\n'
                     f'Статус аренды: {rent["status"]}'
+                    f'{storage_details}'
                 )
                 if any(rent["status"] == "Активна" for rent in user_rent):
                     bot.send_message(
@@ -456,6 +484,80 @@ def main() -> None:
                 f'Количество заказов на аренду на данный момент: {orders_count}',
                 reply_markup=main_menu()
                 )
+
+    @bot.message_handler(commands=['overdue_calls'])
+    def overdue_contacts(message):
+        if str(message.from_user.id) != str(admin_id):
+            bot.send_message(message.chat.id, 'Команда доступна только оператору.')
+            return
+
+        database = db_reader()
+        today = date.today()
+        users_by_id = {
+            user.get("telegram_id"): user
+            for user in database.get("users", [])
+            if isinstance(user, dict)
+        }
+        overdue_rents = []
+
+        for rent in database.get("rental_agreements", []):
+            if rent.get("status") != "Активна":
+                continue
+
+            end_date_raw = rent.get("end_date")
+            try:
+                end_date = datetime.strptime(end_date_raw, "%Y-%m-%d").date()
+            except (TypeError, ValueError):
+                continue
+
+            days_overdue = (today - end_date).days
+            if days_overdue <= 0:
+                continue
+
+            user = users_by_id.get(rent.get("user_telegram_id"), {})
+            overdue_rents.append(
+                {
+                    "days_overdue": days_overdue,
+                    "full_name": user.get("full_name") or "Неизвестный клиент",
+                    "phone": user.get("phone") or "Телефон не указан",
+                    "qr_code": rent.get("qr_code") or "—",
+                    "cell_number": rent.get("cell_number") or "—",
+                    "end_date": end_date_raw,
+                }
+            )
+
+        if not overdue_rents:
+            bot.send_message(
+                message.chat.id,
+                "Сейчас нет просроченных активных аренд.",
+                reply_markup=main_menu(),
+            )
+            return
+
+        overdue_rents.sort(key=lambda row: row["days_overdue"], reverse=True)
+
+        lines = ["Просроченные аренды (для обзвона):", ""]
+        for idx, row in enumerate(overdue_rents, start=1):
+            lines.append(
+                f"{idx}. {row['full_name']} | {row['phone']} | "
+                f"просрочка {row['days_overdue']} дн."
+            )
+            lines.append(
+                f"Договор: {row['qr_code']} | Ячейка: {row['cell_number']} | "
+                f"Окончание: {row['end_date']}"
+            )
+            lines.append("")
+
+        text = "\n".join(lines).strip()
+        max_chunk_len = 3500
+        if len(text) <= max_chunk_len:
+            bot.send_message(message.chat.id, text, reply_markup=main_menu())
+            return
+
+        for start in range(0, len(text), max_chunk_len):
+            chunk = text[start:start + max_chunk_len]
+            bot.send_message(message.chat.id, chunk)
+        bot.send_message(message.chat.id, "Список отправлен.", reply_markup=main_menu())
 
 
     @bot.message_handler(func=lambda m: True)
