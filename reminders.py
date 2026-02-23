@@ -1,4 +1,4 @@
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 
 from db_utils import (
     db_reader,
@@ -148,7 +148,7 @@ def _add_reminder_record(database, qr_code, reminder_type):
     database.setdefault("reminders", []).append(
         {
             "rental_agreement_qr_code": qr_code,
-            "sent_at": f"{datetime.utcnow().isoformat(timespec='seconds')}Z",
+            "sent_at": datetime.now(timezone.utc).isoformat(timespec='seconds').replace("+00:00", "Z"),
             "reminder_type": reminder_type,
         }
     )

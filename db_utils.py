@@ -31,9 +31,51 @@ def append_order(order):
 
     delivery_requests = database.setdefault("delivery_requests", [])
     order_id = len(delivery_requests) + 1
+    if isinstance(order, dict):
+        order.setdefault("order_id", order_id)
     delivery_requests.append(order)
     save_database(database)
     return order_id
+
+
+def upsert_user_profile(
+    telegram_id,
+    full_name=None,
+    username=None,
+    phone=None,
+    address=None,
+    email=None,
+    acquisition_source=None,
+):
+    database = db_reader()
+    if not isinstance(database, dict):
+        database = {}
+
+    users = database.setdefault("users", [])
+    user = None
+    for item in users:
+        if item.get("telegram_id") == telegram_id:
+            user = item
+            break
+
+    if user is None:
+        user = {"telegram_id": telegram_id}
+        users.append(user)
+
+    if full_name:
+        user["full_name"] = full_name
+    if username:
+        user["username"] = username
+    if phone:
+        user["phone"] = phone
+    if address:
+        user["address"] = address
+    if email:
+        user["email"] = email
+    if acquisition_source:
+        user["acquisition_source"] = acquisition_source
+
+    save_database(database)
 
 
 def find_user(database, telegram_id):

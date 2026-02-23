@@ -23,10 +23,20 @@
     },
     {
       "telegram_id": 559985587,
-      "full_name": "Илья Клиентов",
+      "full_name": "Aleksandr",
       "phone": "+7 904 444-55-66",
       "address": "г. Москва, ул. Клиентская, д. 22, кв. 4",
-      "email": "ilya.client@example.com"
+      "email": "ilya.client@example.com",
+      "username": "Groyne_Zi"
+    },
+    {
+      "telegram_id": 1894262332,
+      "full_name": "🌸",
+      "username": "Olga_b_k2",
+      "phone": "+79991234567",
+      "address": "г. Москва, Складская ул., д. 1",
+      "acquisition_source": "в главное меню",
+      "email": "babynin.home@gmail.com"
     }
   ],
   "cell_sizes": [
@@ -73,7 +83,7 @@
       "cell_size_code": "s",
       "warehouse_name": "Центральный склад (Москва)",
       "number": "S-005",
-      "is_occupied": false
+      "is_occupied": true
     }
   ],
   "rental_agreements": [
@@ -96,6 +106,16 @@
       "status": "Закончена",
       "qr_code": "QR-MARIA-L205-2026",
       "created_at": "2026-02-15T11:30:00Z"
+    },
+    {
+      "user_telegram_id": 1894262332,
+      "cell_number": "S-005",
+      "start_date": "2026-02-23",
+      "end_date": "2026-03-16",
+      "total_price": 1400.0,
+      "status": "Закончена",
+      "qr_code": "QR-1894262332-S-005-20260223-6",
+      "created_at": "2026-02-23T11:49:27Z"
     }
   ],
   "items": [
@@ -114,6 +134,18 @@
       "added_at": "2026-02-16T13:45:00Z",
       "updated_at": "2026-02-18T16:20:00Z",
       "removed_at": null
+    },
+    {
+      "rental_agreement_qr_code": "QR-1894262332-S-005-20260223-6",
+      "total_volume_m3": null,
+      "has_seasonal_items": true,
+      "item_list": [
+        "Лыжи",
+        "зимние вещи"
+      ],
+      "added_at": "2026-02-23T11:49:27Z",
+      "updated_at": "2026-02-23T11:49:27Z",
+      "removed_at": null
     }
   ],
   "reminders": [
@@ -131,6 +163,11 @@
       "rental_agreement_qr_code": "QR-MARIA-L205-2026",
       "sent_at": "2026-05-01T11:00:00Z",
       "reminder_type": "2w"
+    },
+    {
+      "rental_agreement_qr_code": "QR-1894262332-S-005-20260223-6",
+      "sent_at": "2026-02-23T11:00:46Z",
+      "reminder_type": "1m"
     }
   ],
   "delivery_requests": [
@@ -148,7 +185,10 @@
       "request_type": "delivery",
       "address": "г. Санкт-Петербург, Лиговский пр., д. 60, кв. 5",
       "requested_at": "2026-03-01T09:45:00Z",
-      "status": "pending"
+      "status": "rejected",
+      "rejected_at": "2026-02-23T11:12:26Z",
+      "rejected_by": 559985587,
+      "rejection_reason": "нет свободных ячеек"
     },
     {
       "user_telegram_id": 559985587,
@@ -156,7 +196,10 @@
       "request_type": "pickup",
       "address": "Москва, красная площадь",
       "requested_at": "2026-02-21T11:26:21Z",
-      "status": "pending"
+      "status": "rejected",
+      "rejected_at": "2026-02-23T11:13:32Z",
+      "rejected_by": 559985587,
+      "rejection_reason": "не знаю что написать"
     },
     {
       "user_telegram_id": 559985587,
@@ -164,7 +207,60 @@
       "request_type": "self_dropoff",
       "address": "г. Москва, Складская ул., д. 1",
       "requested_at": "2026-02-21T11:43:46Z",
-      "status": "pending"
+      "status": "rejected",
+      "rejected_at": "2026-02-23T11:13:38Z",
+      "rejected_by": 559985587,
+      "rejection_reason": "не знаю что написать"
+    },
+    {
+      "user_telegram_id": 1894262332,
+      "item_rental_agreement_qr_code": null,
+      "request_type": "legal_docs_storage",
+      "address": null,
+      "phone": "+79991234567",
+      "racks_count": 3,
+      "rent_months": 6,
+      "monthly_price": 2697.0,
+      "total_price": 16182.0,
+      "requested_at": "2026-02-23T10:40:36Z",
+      "status": "approved",
+      "approved_at": "2026-02-23T10:49:54Z"
+    },
+    {
+      "user_telegram_id": 1894262332,
+      "item_rental_agreement_qr_code": null,
+      "request_type": "self_dropoff",
+      "address": "г. Москва, Складская ул., д. 1",
+      "phone": "+79991234567",
+      "email": "babynin.home@gmail.com",
+      "volume_code": "m",
+      "has_seasonal_items": true,
+      "seasonal_item_list": [
+        "Лыжи",
+        "зимние вещи"
+      ],
+      "rent_days": 21,
+      "promo_code": null,
+      "promo_discount_percent": 0,
+      "expected_monthly_price": 2000.0,
+      "expected_total_price": 1400.0,
+      "requested_at": "2026-02-23T11:48:56Z",
+      "status": "approved",
+      "order_id": 6,
+      "approved_at": "2026-02-23T11:49:27Z",
+      "approved_by": 559985587,
+      "rental_agreement_qr_code": "QR-1894262332-S-005-20260223-6"
+    },
+    {
+      "user_telegram_id": 1894262332,
+      "item_rental_agreement_qr_code": "QR-1894262332-S-005-20260223-6",
+      "request_type": "full_takeout_self",
+      "address": "г. Москва, Складская ул., д. 1",
+      "requested_at": "2026-02-23T11:50:01Z",
+      "status": "approved",
+      "service_mode": "self_service",
+      "order_id": 7,
+      "approved_at": "2026-02-23T11:50:21Z"
     }
   ],
   "payments": [

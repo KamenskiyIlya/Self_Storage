@@ -4,6 +4,7 @@ def main_menu():
     keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
     keyboard.add(KeyboardButton("Правила хранения"), KeyboardButton("Мои заказы"))
     keyboard.add(KeyboardButton("Уже храню вещи"), KeyboardButton("Хочу хранить вещи"))
+    keyboard.add(KeyboardButton("Услуги для юрлиц"))
     return keyboard
 
 
@@ -11,6 +12,10 @@ def admin_menu():
     keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
     keyboard.add(KeyboardButton("Правила хранения"), KeyboardButton("Мои заказы"))
     keyboard.add(KeyboardButton("Уже храню вещи"), KeyboardButton("Хочу хранить вещи"))
+    keyboard.add(KeyboardButton("Услуги для юрлиц"), KeyboardButton("Отчёт по рекламе"))
+    keyboard.add(KeyboardButton("Новые заявки"))
+    keyboard.add(KeyboardButton("Подтверждённые заказы"))
+    keyboard.add(KeyboardButton("Команды оператора"))
     keyboard.add(KeyboardButton("Просрочки (обзвон)"))
     return keyboard
 
@@ -51,4 +56,11 @@ def choose_volume():
 def confirm_request():
     keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
     keyboard.add(KeyboardButton("Да ✅"), KeyboardButton("Нет ❌"))
+    return keyboard
+
+
+def promo_decision():
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+    keyboard.add(KeyboardButton("Пропустить"))
+    keyboard.add(KeyboardButton("Вернуться в главное меню"))
     return keyboard
