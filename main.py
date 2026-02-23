@@ -383,7 +383,6 @@ def main() -> None:
                     f'Конец аренды: {rent["end_date"]}\n'
                     f'Общая цена: {rent["total_price"]}\n'
                     f'Статус аренды: {rent["status"]}'
-                    f'{storage_details}'
                 )
                 if any(rent["status"] == "Активна" for rent in user_rent):
                     bot.send_message(
