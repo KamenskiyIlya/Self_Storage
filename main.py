@@ -537,8 +537,6 @@ def main() -> None:
             )
 
 
-    in_development = []
-
     @bot.message_handler(func=lambda m: m.text == 'Правила хранения')
     def storage_rules(message):
         text = (
@@ -557,13 +555,6 @@ def main() -> None:
         )
         bot.send_message(message.chat.id, text, reply_markup=get_main_menu(message.from_user.id))
 
-    @bot.message_handler(func=lambda m: m.text in in_development)
-    def menu_placeholders(message):
-        bot.send_message(
-            message.chat.id,
-            'Раздел в разработке. Выберите другой пункт или нажмите /start.',
-            reply_markup=get_main_menu(message.from_user.id),
-        )
 
     @bot.message_handler(commands=['run_reminders'])
     def run_reminders_command(message):

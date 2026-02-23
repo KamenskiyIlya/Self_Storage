@@ -78,7 +78,7 @@
       "cell_size_code": "l",
       "warehouse_name": "Северный склад (СПб)",
       "number": "L-205",
-      "is_occupied": true
+      "is_occupied": false
     },
     {
       "cell_size_code": "s",
@@ -122,9 +122,9 @@
       "user_telegram_id": 559985587,
       "cell_number": "L-205",
       "start_date": "2026-02-23",
-      "end_date": "2026-05-24",
+      "end_date": "2026-02-23",
       "total_price": 12000.0,
-      "status": "Активна",
+      "status": "Закончена",
       "qr_code": "QR-559985587-L-205-20260223-9",
       "created_at": "2026-02-23T12:35:20Z"
     }
@@ -164,8 +164,8 @@
       "has_seasonal_items": false,
       "item_list": [],
       "added_at": "2026-02-23T12:35:20Z",
-      "updated_at": "2026-02-23T12:35:20Z",
-      "removed_at": null
+      "updated_at": "2026-02-23T12:54:28Z",
+      "removed_at": "2026-02-23T12:54:28Z"
     }
   ],
   "reminders": [
@@ -325,6 +325,19 @@
       "approved_at": "2026-02-23T12:35:20Z",
       "approved_by": 559985587,
       "rental_agreement_qr_code": "QR-559985587-L-205-20260223-9"
+    },
+    {
+      "user_telegram_id": 559985587,
+      "item_rental_agreement_qr_code": "QR-559985587-L-205-20260223-9",
+      "request_type": "full_takeout_self",
+      "address": "г. Санкт-Петербург, Индустриальная ул., д. 10",
+      "requested_at": "2026-02-23T12:52:42Z",
+      "status": "completed",
+      "service_mode": "self_service",
+      "order_id": 10,
+      "approved_at": "2026-02-23T12:53:42Z",
+      "completed_at": "2026-02-23T12:54:28Z",
+      "completed_by": 559985587
     }
   ],
   "payments": [
